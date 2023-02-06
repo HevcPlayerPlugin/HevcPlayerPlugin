@@ -1,0 +1,11 @@
+﻿#pragma once
+
+#define VERSION_MAJOR       0
+#define VERSION_MINOR       1
+#define VERSION_REVISION    1
+
+#define INTERNAL_STR(v) #v
+#define XSTR(v) INTERNAL_STR(v)
+
+#define STRING_FULL_VERSION XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR) "." XSTR(VERSION_REVISION)
+

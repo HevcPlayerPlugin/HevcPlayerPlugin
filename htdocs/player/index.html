@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    
+    <link rel="stylesheet" href="./styles/style.css">
+    <title>Hevc Player Demo</title>
+    <script src="./js/yuv.js"></script>
+    <script src="./js/pcm.js"></script>
+    <script src="./js/layout.js"></script>
+    <script src="./js/websocket.js"></script>
+</head>
+
+<body>
+    <div id="vidPlayerComp">
+        <div class="row playerToolbar">
+            <div class="exp-left">
+                <label>HevcPlayerPlugin Demo Player</label>
+            </div>
+            <div class="exp-right">
+                <label><input class="mui-switch mui-switch-animbg" type="checkbox" id="checkboxGPU" checked> 硬件加速</label>
+            </div>
+            <div class="exp-right">
+                <label><input class="mui-switch mui-switch-animbg" type="checkbox" id="checkboxSelfAdaption" checked> 自适应码流</label>   
+            </div>
+        </div>
+        <div class="row canvasDiv">            
+            <div id="player"> </div>
+        </div>        
+        <div class="row playerToolbar">
+            <div style="width: 80%" class="exp-left">
+                <label >输入 URL：
+                    <input  class="mediaUrl" autocomplete="on" placeholder="请输入URL" id="media_url"></input>
+                </label>
+            </div>
+            <div>
+                <select class="exp-right" id="cmbScreenNumbers" onchange="changeLayout(this.value)">
+                    <option value="1">1=1x1</option>
+                    <option value="4">4=2x2</option>
+                    <option value="9">9=3x3</option>
+                    <option value="16" selected="selected">16=4x4</option>
+                </select>
+            </div>
+            <div class="exp-right">
+                <img src="./img/stop.png" class="playButton" onclick="myStop()">
+            </div>
+            <div class="exp-right">
+                <img src="./img/play.png" class="playButton" onclick="myPlay()">
+            </div>
+        </div>
+    </div>
+    <div id="vidPlayerCompTest">
+        <button onclick=repeat()>brenchmark test</button>
+        <button onclick=repeatStop()>brenchmark test stop</button>
+        <button onclick=getVersion()>get version</button>
+        <a href="HevcPlayerPluginProtocol://">启动服务</a>
+    </div>
+</body>
+
+<script>
+
+var defaultPort = 30060;
+var defaultScreenNum = 16;
+var maxScreenNum = 16;
+var ws = [];
+var pcmPlayer = [];
+var yuvPlayer = [];
+
+function initCanvas(index, w, h, canvas) {
+    canvas.width = w;
+    canvas.height = h;
+    yuvPlayer[index] = new WebglScreen(canvas);
+}
+function initPcmPlayer(index, c, s) {
+    pcmPlayer[index] = new PCMPlayer({
+        inputCodec: "Float32",
+        channels: c,
+        sampleRate: s,
+        flushTime: 100
+    });
+}
+function myPlay() {
+    var mediaUrl = document.getElementById("media_url").value;
+    var gpu = document.getElementById("checkboxGPU").checked ? 1 : 0;
+    for (var i = 0; i < UILayout.GetScreenNumber(); i++) {
+        ws[i].doPlay(mediaUrl, gpu);
+    }
+    checkSelfAdaption(UILayout.GetScreenNumber());
+}
+function myStop() {
+    for (var i = 0; i < UILayout.GetScreenNumber(); i++) {
+        if (ws[i]) {
+            ws[i].doStop();
+        }
+    }
+}
+function checkSelfAdaption(numScreen) {
+    var selfAdaption = document.getElementById("checkboxSelfAdaption").checked ? 1 : 0;
+    if (selfAdaption) {
+        discardFrames(numScreen);
+        changeResolution(numScreen);
+    }
+}
+function discardFrames(numScreen) {
+    for (var i = 0; i < numScreen; i++) {
+        ws[i].doDiscardFrames(1);
+    }
+}
+function changeResolution(numScreen) {
+    for (var i = 0; i < numScreen; i++) {
+        if (numScreen >= 1 && numScreen <= 4) {
+            ws[i].doChangeResolution(3);
+        } else if (numScreen > 4 && numScreen <= 9) {
+            ws[i].doChangeResolution(2);
+        } else if (numScreen > 9) {
+            ws[i].doChangeResolution(1);
+        }
+    }
+}
+function clock() {
+    myPlay();
+    window.setTimeout(myStop, 5 * 1000);
+}
+function repeat() {
+    clock()
+    interval=self.setInterval("clock()", 10 * 1000);
+}
+function repeatStop() {
+    interval=window.clearInterval(interval)
+}
+function getVersion() {
+    if (ws[0]) {
+        ws[0].doGetVersion();
+    }
+}
+window.onload = function () {
+    UILayout.Init("player", defaultScreenNum, maxScreenNum);
+    for(var i = 0; i < maxScreenNum; i++) {
+        let can = UILayout.GetContainer().children[i];
+        ws[i] = new webSocketClient(defaultPort, can);
+    }
+} 
+function changeLayout(numScreen) {
+    myStop();
+    UILayout.LayoutScreens(numScreen);
+    checkSelfAdaption(numScreen);
+} 
+</script>
+</html>

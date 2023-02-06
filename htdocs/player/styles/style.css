@@ -1,0 +1,126 @@
+body {
+  background-color: #DBF0D2;
+}
+
+select {
+  height: 25px;
+  background-color: #FAF5C8;
+}
+
+label{
+  width:auto;
+  height: 25px;
+  display:flex;
+  color: #FBFEFE;
+}
+
+input {
+  flex: 1 1 auto;
+  background-color: #FAF5C8;
+}
+
+.toast {
+    position: fixed;
+    top: 5%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 10px;
+    border-radius: 5px;
+    background-color: rgb(87, 86, 86);
+    color: #fff;
+}
+
+.playerToolbar {
+    width: 725px;
+    height: 25px;
+    background-color: #FF800a;
+}
+
+.exp-left{ 
+  float: left; 
+}
+
+.exp-right{ 
+  float: right;
+  padding-right: 5px;
+}
+
+.playButton {
+  height: 25px;
+}
+
+#vidPlayerComp {
+    width: 725px;
+    height: 475px;
+    background-color: #d2dae2;
+    border: 2px solid rgba(17, 48, 69, 0.9);
+    display: block;
+    margin: 0 auto;
+    z-index: 10;
+}
+
+#vidPlayerCompTest {
+  width: 725px;
+  background-color: #bcbcbc;
+  border: 2px solid rgba(17, 48, 69, 0.9);
+  display: block;
+  margin: 0 auto;
+  z-index: 10;
+}
+
+.canvasDiv {
+    margin: 0 auto;
+    width: 725px;
+    height: 423px
+}
+
+.no-padding {
+    padding-right: 0px;
+    padding-left: 0px;
+}
+
+.mui-switch {
+  width: 40px;
+  height: 20px;
+  position: relative;
+  border: 1px solid #dfdfdf;
+  background-color: #fdfdfd;
+  box-shadow: #dfdfdf 0 0 0 0 inset;
+  border-radius: 20px;
+  background-clip: content-box;
+  display: inline-block;
+  -webkit-appearance: none;
+  user-select: none;
+  outline: none; }
+  .mui-switch:before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    top: 0px;
+    left: 0;
+    border-radius: 20px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+  .mui-switch:checked {
+    border-color: #FF800a;
+    box-shadow: #FF800a 0 0 0 16px inset;
+    background-color: #FF800a; }
+    .mui-switch:checked:before {
+      left: 21px; }
+  .mui-switch.mui-switch-animbg {
+    transition: background-color ease 0.4s; }
+    .mui-switch.mui-switch-animbg:before {
+      transition: left 0.3s; }
+    .mui-switch.mui-switch-animbg:checked {
+      box-shadow: #dfdfdf 0 0 0 0 inset;
+      background-color: #418F34;
+      transition: border-color 0.4s, background-color ease 0.4s; }
+      .mui-switch.mui-switch-animbg:checked:before {
+        transition: left 0.3s; }
+
+ 
