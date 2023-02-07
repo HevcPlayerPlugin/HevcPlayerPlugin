@@ -48,6 +48,7 @@ Source: "..\..\BuildOut\RelWithDebInfo\*.dll"; DestDir: "{app}"; Flags: ignoreve
 Source: "..\..\BuildOut\RelWithDebInfo\*.pdb"; DestDir: "{app}"; Flags: ignoreversion 
 Source: "..\..\conf\*"; DestDir: "{app}\conf"; Flags: ignoreversion 
 Source: "..\..\htdocs\player\*"; DestDir: "{app}\player"; Flags: ignoreversion recursesubdirs
+Source: "..\..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]
