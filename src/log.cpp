@@ -1,7 +1,8 @@
 ﻿#include "log.h"
 #include "config.h"
 
-Logger::Logger(int level, const char *tag, const std::string &filename /*= ""*/) : fp(nullptr) {
+Logger::Logger(int level, const char *tag, const std::string &filename /*= ""*/) 
+    : fp(nullptr) {
     if ((m_nLevel = level) < gConfig->logLevel) {
         return;
     }

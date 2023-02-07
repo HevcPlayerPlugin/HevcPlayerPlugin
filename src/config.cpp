@@ -6,7 +6,7 @@
 
 constexpr auto SERVICE_PORT_DEFAULT = (30060);
 
-SysConfig::SysConfig() : servicePort(SERVICE_PORT_DEFAULT), logLevel(0) {
+SysConfig::SysConfig() : servicePort(SERVICE_PORT_DEFAULT), logLevel(3) {
     start();
 }
 
@@ -30,9 +30,9 @@ int SysConfig::start() {
         return InvalidJson;
     }
 
-//#ifdef _DEBUG
-//    logLevel = 0;
-//#endif // _DEBUG
+#ifdef _DEBUG
+    logLevel = 0;
+#endif // _DEBUG
 
 
     return 0;
