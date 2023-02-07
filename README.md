@@ -34,5 +34,18 @@ cmake . -A "Win32" -B build
 ## 打包
 打包脚本可以参考`scripts\package`
 
+## 性能
+
+**系统配置**
+- CPU： Intel(R) Core(TM) i5-10210U CPU @ 1.60GHz
+- GPU： Intel(R) UHD Graphics
+	
+测试16路 1080P@H.265 视频，结果如下：
+
+| 程序 | CPU | 内存 | GPU |
+| --- | --- | --- | --- |
+| HevcPlayerPlugin | <10% | <800M | <70% |
+| Chrome | <5% | <200M | 5% |
+
 ## 示例
 ![demo.png](docs/images/demo.png)
