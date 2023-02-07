@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(3rdparty/websocketpp-0.8.2/include/asio)
 include_directories(3rdparty/websocketpp-0.8.2/include)
 include_directories(3rdparty/ffmpeg-5.0.1/include)
-include_directories(src/jsoncpp)
+include_directories(3rdparty/jsoncpp)
 
 link_directories(3rdparty/ffmpeg-5.0.1/lib)
 list(APPEND LIBS avcodec avformat avutil swscale Dbghelp)
@@ -15,8 +15,8 @@ link_libraries(${LIBS})
 
 file(GLOB SRC_DIR src/*.h
                   src/*.cpp
-                  src/jsoncpp/*.h
-                  src/jsoncpp/*.cpp)
+                  3rdparty/jsoncpp/*.h
+                  3rdparty/jsoncpp/*.cpp)
 
 add_executable(${TARGET_NAME} ${SRC_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_LIST_DIR}/BuildOut)

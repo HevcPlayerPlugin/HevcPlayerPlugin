@@ -1,5 +1,5 @@
 ﻿#include "signalSession.h"
-#include "../version.h"
+#include "version.h"
 #include <memory>
 
 const int YUV444_4K = 3840 * 2160 * 3;
