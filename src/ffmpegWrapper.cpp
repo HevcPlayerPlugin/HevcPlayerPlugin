@@ -9,11 +9,13 @@
 
 #pragma warning (disable: 4996)
 #pragma warning (disable: 4819)
+#pragma warning (disable: 26812)
 
 const enum AVPixelFormat TARGET_PIX_FMT = AV_PIX_FMT_YUV420P;
-const enum AVHWDeviceType HW_DEVICE_TYPE = AV_HWDEVICE_TYPE_DXVA2; // ;  AV_HWDEVICE_TYPE_D3D11VA
 const int AV_RAW_HEADER_SIZE = 8;
 const int DISCARD_FRAME_FREQUENCY = 2;
+const int MAX_PACKET_VIDEO = 10;
+const int MAX_PACKET_AUDIO = 30;
 
 #define RESOLUTION_NUM (5)
 #define SAMPLERATE_NUM (7)
@@ -176,6 +178,11 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
 
         /* read frames from the input */
         while (!stop_request_) {
+            if (video_packet_queue_.size() >= MAX_PACKET_VIDEO || 
+                audio_packet_queue_.size() >= MAX_PACKET_AUDIO) {
+                std::this_thread::sleep_for(chrono::milliseconds(10));
+                continue;
+            }
             ret = av_read_frame(fmt_ctx_, pkt);
             if (ret < 0 || !pkt) {
                 if (fmt_ctx_->pb && fmt_ctx_->pb->error)
@@ -279,7 +286,9 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     if (frame->format == hw_pix_fmt_) {
         /* retrieve data from GPU to CPU */
         if ((ret = av_hwframe_transfer_data(sw_frame_, frame, 0)) < 0) {
-            LOG_ERROR << "Error transferring the data to system memory";
+            char buf[128] = { 0 };
+            av_make_error_string(buf, 128, ret);
+            LOG_ERROR << "Error transferring the data to system memory(" << buf;
             // TODO: 错误处理
             return 0;
         }
@@ -551,12 +560,16 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
         }
 
         if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-            if (hw_get_config(dec) < 0)
+            
+            if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 && 
+                hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
                 return -1;
-            (*dec_ctx)->get_format = hw_get_format;
+            }
 
-            if (hw_decoder_init(*dec_ctx, HW_DEVICE_TYPE) < 0)
+            (*dec_ctx)->get_format = hw_get_format;
+            if (hw_decoder_init(*dec_ctx) < 0) {
                 return -1;
+            }
         }
 
         /* Init the decoders */
@@ -599,11 +612,10 @@ int FfmpegWrapper::open_input_url(const char *inputUrl, int retryTimes) {
     return ret;
 }
 
-int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type) {
+int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx) {
     int ret = 0;
 
-    if ((ret = av_hwdevice_ctx_create(&hw_device_ctx_, type,
-                                      NULL, NULL, 0)) < 0) {
+    if ((ret = av_hwdevice_ctx_create(&hw_device_ctx_, device_type_, NULL, NULL, 0)) < 0) {
         LOG_ERROR << "Failed to create specified HW device.";
         return ret;
     }
@@ -612,17 +624,17 @@ int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceTyp
     return ret;
 }
 
-int FfmpegWrapper::hw_get_config(const AVCodec *decoder) {
+int FfmpegWrapper::hw_get_config(const AVCodec *decoder, AVHWDeviceType type) {
     for (int i = 0;; i++) {
         const AVCodecHWConfig *config = avcodec_get_hw_config(decoder, i);
         if (!config) {
-            LOG_ERROR << "Decoder " << decoder->name
-                      << " does not support device type "
-                      << av_hwdevice_get_type_name(HW_DEVICE_TYPE);
+            LOG_ERROR << "Decoder " << decoder->name << " does not support device type "
+                << av_hwdevice_get_type_name(type);
             return -1;
         }
-        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
-            config->device_type == HW_DEVICE_TYPE) {
+        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX 
+            && type == config->device_type) {
+            device_type_ = config->device_type;
             hw_pix_fmt_ = config->pix_fmt;
             break;
         }

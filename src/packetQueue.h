@@ -29,6 +29,8 @@ public:
 
     void stop();
 
+    int size();
+
 private:
     int put_private(AVPacket *pkt);
 
@@ -37,6 +39,7 @@ private:
     std::mutex mutex_;
     std::condition_variable cond_;
     int stop_request_;
+    int nb_packets_;
 };
 
 #endif // __PACKET_QUEUE_H__

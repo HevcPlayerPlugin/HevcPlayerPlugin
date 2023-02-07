@@ -54,9 +54,9 @@ public:
 private:
     int open_input_url(const char *inputUrl, int retryTimes);
 
-    int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type);
+    int hw_decoder_init(AVCodecContext *ctx);
 
-    int hw_get_config(const AVCodec *decoder);
+    int hw_get_config(const AVCodec *decoder, AVHWDeviceType type);
 
     int output_video_frame(AVFrame *frame);
 
@@ -79,6 +79,7 @@ private:
     std::string inputUrl_;
     int useGPU_;
     AVBufferRef *hw_device_ctx_;
+    AVHWDeviceType device_type_;
     static enum AVPixelFormat hw_pix_fmt_;
 
     AVDictionary *format_options_;

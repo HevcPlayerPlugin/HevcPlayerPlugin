@@ -4,6 +4,7 @@
 PacketQueue::PacketQueue() {
     pkt_list_ = av_fifo_alloc(sizeof(MyAVPacketList));
     stop_request_ = 0;
+    nb_packets_ = 0;
 }
 
 PacketQueue::~PacketQueue() {
@@ -30,6 +31,8 @@ int PacketQueue::put(AVPacket *pkt) {
     if (ret < 0)
         av_packet_free(&pkt1);
 
+    nb_packets_++;
+
     return ret;
 }
 
@@ -47,6 +50,8 @@ int PacketQueue::get(AVPacket *pkt) {
     av_packet_move_ref(pkt, pkt1.pkt);
     av_packet_free(&pkt1.pkt);
 
+    nb_packets_--;
+
     return 0;
 }
 
@@ -63,6 +68,11 @@ void PacketQueue::flush() {
 void PacketQueue::stop() {
     stop_request_ = 1;
     cond_.notify_all();
+}
+
+int PacketQueue::size()
+{
+    return nb_packets_;
 }
 
 int PacketQueue::put_private(AVPacket *pkt) {
