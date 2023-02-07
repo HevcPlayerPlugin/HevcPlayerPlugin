@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "HevcPlayerPlugin"
-#define MyAppVersion "0.1.1"
+#define MyAppVersion "0.1.2"
 #define MyAppPublisher "HevcPlayerPlugin"
 #define MyAppURL "HevcPlayerPlugin"
 #define MyAppExeName "HevcPlayerPlugin.exe"
@@ -43,12 +43,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 //Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\..\BuildOut\RelWithDebInfo\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\BuildOut\RelWithDebInfo\*.dll"; DestDir: "{app}"; Flags: ignoreversion 
-Source: "..\..\BuildOut\RelWithDebInfo\*.pdb"; DestDir: "{app}"; Flags: ignoreversion 
+Source: "..\..\BuildOut\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\BuildOut\Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion 
 Source: "..\..\conf\*"; DestDir: "{app}\conf"; Flags: ignoreversion 
 Source: "..\..\htdocs\player\*"; DestDir: "{app}\player"; Flags: ignoreversion recursesubdirs
-Source: "..\..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs
+Source: "..\..\docs\½Ó¿ÚÎÄµµ.md"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]
