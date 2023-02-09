@@ -37,15 +37,30 @@ cmake . -A "Win32" -B build
 ## 性能
 
 **系统配置**
-- CPU： Intel(R) Core(TM) i5-10210U CPU @ 1.60GHz
-- GPU： Intel(R) UHD Graphics
-	
-测试16路 1080P@H.265 视频，结果如下：
+- CPU： Intel(R) Core(TM) i5-9500 CPU @ 3.00GHz
+- GPU： Intel(R) UHD Graphics 630
+
+**6** 路 4K@H.265 视频，结果如下：
 
 | 程序 | CPU | 内存 | GPU |
 | --- | --- | --- | --- |
-| HevcPlayerPlugin | <10% | <800M | <70% |
+| HevcPlayerPlugin | <10% | <800M | <85% |
+| Chrome | <10% | <200M | 15% |
+
+**16** 路 2K@H.265 视频，结果如下：
+
+| 程序 | CPU | 内存 | GPU |
+| --- | --- | --- | --- |
+| HevcPlayerPlugin | <15% | <1600M | <90% |
+| Chrome | <15% | <150M | 5% |
+	
+**16** 路 1080P@H.265 视频，结果如下：
+
+| 程序 | CPU | 内存 | GPU |
+| --- | --- | --- | --- |
+| HevcPlayerPlugin | <10% | <800M | <60% |
 | Chrome | <5% | <200M | 5% |
 
+> 备注： Chrome一个标签页最多只能创建16个WebGL Context，所以1080P测试的GPU使用率并没有达到100%，理论上应该能达到25路。
 ## 示例
 ![demo.png](docs/images/demo.png)
