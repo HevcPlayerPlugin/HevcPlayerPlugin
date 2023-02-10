@@ -154,7 +154,7 @@ class webSocketClient {
             }
         } else {
             const payload = JSON.parse(data);
-            if (payload.requestType == 5) {
+            if (payload.type == 5) {
                 that.showToast("version: " + payload.version);
             }
             if (payload.result != 0) {
