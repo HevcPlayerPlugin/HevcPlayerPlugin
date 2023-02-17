@@ -127,7 +127,7 @@ class webSocketClient {
                 }
             }
             // audio-pcm
-            else if (header[0] == 7) {
+            else if (header[0] == 0) {
                 if (that.pcmPlayer == null) {
                     return;
                 }

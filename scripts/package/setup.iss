@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "HevcPlayerPlugin"
-#define MyAppVersion "0.1.2"
+#define MyAppVersion "0.1.3"
 #define MyAppPublisher "HevcPlayerPlugin"
 #define MyAppURL "HevcPlayerPlugin"
 #define MyAppExeName "HevcPlayerPlugin.exe"
