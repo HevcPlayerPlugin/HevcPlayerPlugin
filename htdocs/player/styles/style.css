@@ -1,5 +1,5 @@
 body {
-  background-color: #DBF0D2;
+  background-color: rgb(254,247,225);
 }
 
 select {
@@ -11,7 +11,6 @@ label{
   width:auto;
   height: 25px;
   display:flex;
-  color: #FBFEFE;
 }
 
 input {
@@ -33,7 +32,7 @@ input {
 .playerToolbar {
     width: 725px;
     height: 25px;
-    background-color: #FF800a;
+    background-color: rgb(241,201,80);
 }
 
 .exp-left{ 
@@ -52,7 +51,7 @@ input {
 #vidPlayerComp {
     width: 725px;
     height: 475px;
-    background-color: #d2dae2;
+    background-color: rgb(251,224,142);
     border: 2px solid rgba(17, 48, 69, 0.9);
     display: block;
     margin: 0 auto;
@@ -61,7 +60,6 @@ input {
 
 #vidPlayerCompTest {
   width: 725px;
-  background-color: #bcbcbc;
   border: 2px solid rgba(17, 48, 69, 0.9);
   display: block;
   margin: 0 auto;
@@ -118,7 +116,7 @@ input {
       transition: left 0.3s; }
     .mui-switch.mui-switch-animbg:checked {
       box-shadow: #dfdfdf 0 0 0 0 inset;
-      background-color: #418F34;
+      background-color: rgb(29,161,242);
       transition: border-color 0.4s, background-color ease 0.4s; }
       .mui-switch.mui-switch-animbg:checked:before {
         transition: left 0.3s; }
