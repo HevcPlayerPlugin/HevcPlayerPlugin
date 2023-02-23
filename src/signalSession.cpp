@@ -106,7 +106,7 @@ int SignalSession::playVideo(WebsocketServer *ws, uintptr_t hdl, const Json::Val
         useGPU = playParam["use_gpu"].asUInt();
         width = playParam["width"].asUInt();
         height = playParam["height"].asUInt();
-        if (!jsonRequest.isMember("use_tcp")) {
+        if (jsonRequest.isMember("use_tcp")) {
             useTCP = playParam["use_tcp"].asUInt();
         }
     } catch (Json::Exception &e) {

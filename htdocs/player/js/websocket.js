@@ -97,6 +97,7 @@ class webSocketClient {
     doSendMessage(msg) {
         if (this.ws && this.ws.readyState === 1) {
             this.ws.send(msg);
+            console.log(msg);
         } else {
             this.showToast("Websocket NOT connected");
         }
