@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="./styles/style.css">
     <title>Hevc Player Demo</title>
     <script src="./js/yuv.js"></script>
-    <script src="./js/pcm.js"></script>
     <script src="./js/layout.js"></script>
     <script src="./js/websocket.js"></script>
 </head>
@@ -31,7 +30,7 @@
         <div class="row playerToolbar">
             <div style="width: 80%" class="exp-left">
                 <label >输入 URL：
-                    <input  class="mediaUrl" autocomplete="on" placeholder="请输入URL" id="media_url"></input>
+                    <input class="mediaUrl" autocomplete="on" placeholder="请输入URL" id="media_url"/>
                 </label>
             </div>
             <div>
@@ -64,21 +63,12 @@ var defaultPort = 30060;
 var defaultScreenNum = 1;
 var maxScreenNum = 16;
 var ws = [];
-var pcmPlayer = [];
 var yuvPlayer = [];
 
 function initCanvas(index, w, h, canvas) {
     canvas.width = w;
     canvas.height = h;
     yuvPlayer[index] = new WebglScreen(canvas);
-}
-function initPcmPlayer(index, c, s) {
-    pcmPlayer[index] = new PCMPlayer({
-        inputCodec: "Float32",
-        channels: c,
-        sampleRate: s,
-        flushTime: 100
-    });
 }
 function myPlay() {
     var mediaUrl = document.getElementById("media_url").value;

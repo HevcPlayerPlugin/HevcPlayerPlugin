@@ -8,34 +8,14 @@ class webSocketClient {
             [1280, 720],
             [1920, 1080]
         ];
-        this.sampleRateArray = [
-            8000,
-            12000,
-            16000,
-            32000,
-            44100,
-            48000,
-            96000
-        ];
-        this.sampleFormatArray = [
-            'none',
-            'Int8',
-            'Int16',
-            'Int32',
-            'Float32'
-        ];
         this.port = port;
 
         this.canvas = canvas;
         this.ws = null;
-        this.pcmPlayer = null;
         this.yuvPlayer = null;
         this.avRawHeaderSize = 8;
         this.width = 1280;
         this.height = 720;
-        this.channels = 1;
-        this.sampleRate = 44100;
-        this.sampleFormatIndex = 4; // Float32
 
         this.checkInit();
     }
@@ -44,14 +24,6 @@ class webSocketClient {
         canvas.width = w;
         canvas.height = h;
         this.yuvPlayer = new WebglScreen(canvas);
-    }
-    initPcmPlayer(c, s) {
-        this.pcmPlayer = new PCMPlayer({
-            inputCodec: "Float32",
-            channels: c,
-            sampleRate: s,
-            flushTime: 100
-        });
     }
 
     initWebsocket() {
@@ -68,9 +40,6 @@ class webSocketClient {
             that.onMessage(event);
         }
         this.ws.onclose = function (event) {
-            if (that.pcmPlayer) {
-                that.pcmPlayer.destroy();
-            }
             if (that.yuvPlayer) {
                 that.yuvPlayer.destroy();
             }
@@ -78,9 +47,6 @@ class webSocketClient {
             that.showToast("Connection Closed.");
         }
         this.ws.onerror = function (event) {
-            if (that.pcmPlayer) {
-                that.pcmPlayer.destroy();
-            }
             if (that.yuvPlayer) {
                 that.yuvPlayer.destroy();
             }
@@ -94,9 +60,6 @@ class webSocketClient {
         if (that.yuvPlayer == null) {
             that.initYuvPlayer(1280, 720, that.canvas);
         }
-        if (that.pcmPlayer == null) {
-            that.initPcmPlayer(1, 44100);
-        }
         if (that.ws == null) {
             that.initWebsocket();
         }
@@ -107,51 +70,19 @@ class webSocketClient {
         let data = event.data;
         if (typeof data !== 'string') {
             let header = new Uint8Array(data, 0, that.avRawHeaderSize);
+            let w = (header[0] << 8) + header[1];
+            let h = (header[2] << 8) + header[3];
             // video-yuv420P
-            if (header[0] == 1) {
-                if (that.yuvPlayer == null) {
-                    return;
-                }
+            if (that.yuvPlayer == null) {
+                return;
+            }
 
-                let type = header[1];
-                if (type >= 0) {
-                    let w = that.resolutionArray[type + 1][0];
-                    let h = that.resolutionArray[type + 1][1];
-                    if (that.width != w || that.height != h) {
-                        that.yuvPlayer.setSize(w, h, w);
-                        that.width = w;
-                        that.height = h;
-                    }
-                    that.yuvPlayer.renderImg(w, h,
-                        new Uint8Array(data, that.avRawHeaderSize, w * h * 3 / 2));
-                }
+            if (that.width != w || that.height != h) {
+                    that.yuvPlayer.setSize(w, h, w);
+                    that.width = w;
+                    that.height = h;
             }
-            // audio-pcm
-            else if (header[0] == 0) {
-                if (that.pcmPlayer == null) {
-                    return;
-                }
-                
-                let f = header[1];
-                let c = header[2];
-                let s = that.sampleRateArray[header[3]];
-                if (that.pcmPlayer.option.channels != c
-                    || that.pcmPlayer.option.sampleRate != s
-                    || that.pcmPlayer.option.inputCodec != that.sampleFormatArray[f]) {
-                    that.pcmPlayer.destroy();
-                    that.pcmPlayer = null;
-                    that.pcmPlayer = new PCMPlayer({
-                        inputCodec: that.sampleFormatArray[f],
-                        channels: c,
-                        sampleRate: s,
-                        flushTime: 100
-                    });
-                    that.channels = c;
-                    that.sampleRate = s;
-                    that.inputCodec = that.sampleFormatArray[f];
-                }
-                that.pcmPlayer.feed(data.slice(that.avRawHeaderSize, data.byteLength));
-            }
+            that.yuvPlayer.renderImg(w, h, new Uint8Array(data, that.avRawHeaderSize, w * h * 3 / 2));
         } else {
             const payload = JSON.parse(data);
             if (payload.type == 5) {
@@ -164,10 +95,10 @@ class webSocketClient {
     }
 
     doSendMessage(msg) {
-        if (this.ws.readyState === 1) {
+        if (this.ws && this.ws.readyState === 1) {
             this.ws.send(msg);
         } else {
-            this.showToast("Websocket NOT connected. readyState: " + ws.readyState);
+            this.showToast("Websocket NOT connected");
         }
     }
 
@@ -193,17 +124,10 @@ class webSocketClient {
         }
         that.doSendMessage(JSON.stringify(dataJson));
 
-        if (that.pcmPlayer) {
-            that.pcmPlayer.destroy();
-            that.pcmPlayer = null;
-        }
         if (that.yuvPlayer) {
             that.yuvPlayer.destroy();
             that.yuvPlayer = null;
         }
-    }
-    doChangeVolume(percent) {
-        this.pcmPlayer.volume(percent);
     }
     doChangeResolution(value) {
         this.checkInit();
@@ -264,8 +188,5 @@ class webSocketClient {
 
         that.yuvPlayer.destroy();
         that.yuvPlayer = null;
-
-        that.pcmPlayer.destroy();
-        that.pcmPlayer = null;
     }
 }

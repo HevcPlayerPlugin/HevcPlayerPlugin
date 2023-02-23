@@ -65,3 +65,8 @@ cmake . -A "Win32" -B build
 ## 示例
 [下载](https://github.com/duiniuluantanqin/HevcPlayerPlugin/releases/download/v0.1.2/HevcPlayerPlugin.Setup-0.1.2.exe)已经编译好的Windows二进制文件，安装后打开测试页面，路径在程序安装目录下`player/index.html`。
 ![demo.png](docs/images/demo.png)
+
+## 联系我们
+QQ群：193047264
+
+![](docs/images/HevcPlayerPlugin技术交流群群聊二维码.png))

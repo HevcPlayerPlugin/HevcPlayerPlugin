@@ -1,5 +1,5 @@
-#ifndef __SYS_CONFIG_H__
-#define __SYS_CONFIG_H__
+#ifndef __HPP_CONFIG_H__
+#define __HPP_CONFIG_H__
 
 class SysConfig {
 public:

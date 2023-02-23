@@ -135,7 +135,7 @@ int SignalSession::playVideo(WebsocketServer *ws, uintptr_t hdl, const Json::Val
                                 });
 
     int ret = UnknownError;
-    if ((ret = ffPtr->startPlay(url.c_str(), width, height, useGPU)) != NoneError) {
+    if ((ret = ffPtr->startPlay(url.c_str(), width, height, useGPU, useTCP)) != NoneError) {
         return ret;
     }
 

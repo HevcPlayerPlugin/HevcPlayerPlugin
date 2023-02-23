@@ -7,6 +7,9 @@
 #include <condition_variable>
 #include "packetQueue.h"
 
+#define SDL_MAIN_HANDLED
+#include <SDL.h>
+
 extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavutil/samplefmt.h>
@@ -16,13 +19,8 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/fifo.h>
 #include <libavutil/time.h>
+#include <libswresample/swresample.h>
 }
-
-enum {
-    FF_MEDIA_TYPE_UNKNOWN = -1,
-    FF_MEDIA_TYPE_AUDIO,
-    FF_MEDIA_TYPE_VIDEO
-};
 
 typedef std::function<int(void *user, uintptr_t handle, uint8_t *data, size_t length)> FF_SEND_DATA_CALLBACK;
 typedef std::function<int(void *user, uintptr_t handle, int err_code, const uint8_t *err_desc)> FF_EXCEPTION_CALLBACK;
@@ -55,6 +53,8 @@ private:
     int open_input_url(const char *inputUrl, int retryTimes);
 
     int hw_decoder_init(AVCodecContext *ctx);
+
+    int audio_open();
 
     int hw_get_config(const AVCodec *decoder, AVHWDeviceType type);
 
@@ -92,6 +92,9 @@ private:
     bool sws_init_;
     struct SwsContext *sws_ctx_;
 
+    bool swr_init_;
+    struct SwrContext* swr_ctx_;
+
     int output_width_;
     int output_height_;
 
@@ -121,6 +124,8 @@ private:
     uintptr_t user_handle_;
     FF_SEND_DATA_CALLBACK ff_send_data_callback_;
     FF_EXCEPTION_CALLBACK ff_exception_callback_;
+
+    SDL_AudioDeviceID audio_dev_;
 };
 
 

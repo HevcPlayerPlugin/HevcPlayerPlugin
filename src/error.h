@@ -1,5 +1,5 @@
-﻿#ifndef __COMMON_H__
-#define __COMMON_H__
+﻿#ifndef __HPP_COMMON_H__
+#define __HPP_COMMON_H__
 
 #include <cstdint>
 #include "log.h"
@@ -25,4 +25,4 @@ typedef enum error_type {
 
 const char *GetErrorInfo(uint32_t ErrorNo);
 
-#endif //__COMMON_H__
+#endif //__HPP_COMMON_H__

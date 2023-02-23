@@ -70,7 +70,7 @@ void PacketQueue::stop() {
     cond_.notify_all();
 }
 
-int PacketQueue::size()
+int PacketQueue::size() const
 {
     return nb_packets_;
 }

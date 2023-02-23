@@ -29,7 +29,7 @@ public:
 
     void stop();
 
-    int size();
+    int size() const;
 
 private:
     int put_private(AVPacket *pkt);

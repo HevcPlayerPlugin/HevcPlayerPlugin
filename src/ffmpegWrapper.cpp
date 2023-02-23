@@ -11,53 +11,23 @@
 #pragma warning (disable: 4819)
 #pragma warning (disable: 26812)
 
-const enum AVPixelFormat TARGET_PIX_FMT = AV_PIX_FMT_YUV420P;
-const int AV_RAW_HEADER_SIZE = 8;
-const int DISCARD_FRAME_FREQUENCY = 2;
-const int MAX_PACKET_VIDEO = 10;
-const int MAX_PACKET_AUDIO = 30;
+constexpr enum AVPixelFormat TARGET_PIX_FMT = AV_PIX_FMT_YUV420P;
+constexpr int HPP_HEADER_SIZE = 8;
+constexpr int DISCARD_FRAME_FREQUENCY = 2;
+constexpr int MAX_PACKET_VIDEO = 10;
+constexpr int MAX_PACKET_AUDIO = 30;
+constexpr int AUDIO_CHANNELS_DEFAULT = 2;
 
-#define RESOLUTION_NUM (5)
-#define SAMPLERATE_NUM (7)
-const int vResolution_[RESOLUTION_NUM][2] = {
+constexpr int gResolution_[][2] = {
         {256,  144},
         {640,  360},    // 建议模式：16分屏
         {800,  600},    //            9分屏
-        {1280, 720},   //            4分屏
-        {1920, 1080}   //            1分屏
+        {1280, 720},    //            4分屏
+        {1920, 1080}    //            1分屏
 };
-const int vSampleRate_[SAMPLERATE_NUM] = {
-        8000,
-        12000,
-        16000,
-        32000,
-        44100,
-        48000,
-        96000
-};
-
-static int getSampleRateInddex(int s) {
-    for (int i = 0; i < SAMPLERATE_NUM; i++) {
-        if (vSampleRate_[i] == s) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-static int getResolutionIndex(int w, int h) {
-
-    for (int i = 0; i < RESOLUTION_NUM; i++) {
-        if ((vResolution_[i][0] == w) && (vResolution_[i][1] == h)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 static int judgeVideoResolution(uint16_t width, uint16_t height) {
     int ret = -1;
-    for (const auto &vr: vResolution_) {
+    for (const auto &vr: gResolution_) {
         if (vr[0] != width) {
             continue;
         }
@@ -74,19 +44,23 @@ FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), format_options_(nullptr), sw
                                  audio_dst_data_(nullptr), current_pts_audio_in_ms_(0), current_pts_video_in_ms_(0),
                                  output_width_(-1), output_height_(-1), audio_stream_(nullptr), video_stream_(nullptr),
                                  useGPU_(0), user_data_(nullptr), user_handle_(0), discard_frame_index_(0),
-                                 discard_frame_enabled_(1) {
+                                 discard_frame_enabled_(1), swr_init_(false), swr_ctx_(nullptr), audio_dev_(0) {
 #ifdef _DEBUG
     showBanner();
     av_log_set_level(AV_LOG_INFO);
 #else
     av_log_set_level(AV_LOG_FATAL);
 #endif
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+        LOG_ERROR << "Could not initialize SDL -" << SDL_GetError();
+    }
 }
 
 FfmpegWrapper::~FfmpegWrapper() {
     if (!stop_request_) {
         stopPlay();
     }
+    SDL_Quit();
 }
 
 int FfmpegWrapper::showBanner() {
@@ -145,6 +119,11 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
 
             if (open_codec_context(&audio_stream_index, &audio_dec_ctx_, fmt_ctx_, AVMEDIA_TYPE_AUDIO) >= 0) {
                 audio_stream_ = fmt_ctx_->streams[audio_stream_index];
+            }
+
+            if ((ret = audio_open()) < 0) {
+                ret = -1;
+                break;
             }
 
             /* dump input information to stderr */
@@ -242,6 +221,12 @@ int FfmpegWrapper::stopPlay() {
         sws_freeContext(sws_ctx_);
         sws_ctx_ = nullptr;
     }
+
+    if (swr_ctx_) {
+        swr_free(&swr_ctx_);
+        swr_ctx_ = nullptr;
+    }
+
     avcodec_free_context(&video_dec_ctx_);
     avcodec_free_context(&audio_dec_ctx_);
     avformat_close_input(&fmt_ctx_);
@@ -251,6 +236,8 @@ int FfmpegWrapper::stopPlay() {
     av_frame_free(&frameYUV420_);
     av_freep(&video_dst_data_);
     av_freep(&audio_dst_data_);
+
+    SDL_CloseAudioDevice(audio_dev_);
     return 0;
 }
 
@@ -336,7 +323,6 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
                 return ret;
             }
             sws_init_ = true;
-            // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, pCodecCtx->width, pCodecCtx->height);
         }
 
         ret = sws_scale(sws_ctx_, (const uint8_t *const *) tmp_frame->data, tmp_frame->linesize,
@@ -352,7 +338,7 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
 
     int size = av_image_get_buffer_size(TARGET_PIX_FMT, output_width_, output_height_, 1);
     if (!video_dst_data_) {
-        video_dst_data_ = (uint8_t *) av_malloc(size + AV_RAW_HEADER_SIZE);
+        video_dst_data_ = (uint8_t *) av_malloc(size + HPP_HEADER_SIZE);
         if (!video_dst_data_) {
             LOG_ERROR << "Can not alloc buffer";
             ret = AVERROR(ENOMEM);
@@ -367,16 +353,16 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     }
     current_pts_video_in_ms_ = av_q2d(video_stream_->time_base) * frame->pts * 1000;
 
-    video_dst_data_[0] = FF_MEDIA_TYPE_VIDEO; //video flag
-    video_dst_data_[1] = getResolutionIndex(output_width_, output_height_);
-    video_dst_data_[2] = 0x01;
-    video_dst_data_[3] = 0x01;
-    video_dst_data_[4] = (uint8_t) (current_pts_video_in_ms_ >> 24);
-    video_dst_data_[5] = (uint8_t) (current_pts_video_in_ms_ >> 16);
-    video_dst_data_[6] = (uint8_t) (current_pts_video_in_ms_ >> 8);
-    video_dst_data_[7] = (uint8_t) (current_pts_video_in_ms_);
+    video_dst_data_[0] = (uint8_t)(output_width_ >> 8);
+    video_dst_data_[1] = (uint8_t)(output_width_);
+    video_dst_data_[2] = (uint8_t)(output_height_ >> 8);
+    video_dst_data_[3] = (uint8_t)(output_height_);
+    video_dst_data_[4] = (uint8_t)(current_pts_video_in_ms_ >> 24);
+    video_dst_data_[5] = (uint8_t)(current_pts_video_in_ms_ >> 16);
+    video_dst_data_[6] = (uint8_t)(current_pts_video_in_ms_ >> 8);
+    video_dst_data_[7] = (uint8_t)(current_pts_video_in_ms_);
 
-    ret = av_image_copy_to_buffer(video_dst_data_ + AV_RAW_HEADER_SIZE, size,
+    ret = av_image_copy_to_buffer(video_dst_data_ + HPP_HEADER_SIZE, size,
                                   (const uint8_t *const *) tmp_frame2->data,
                                   (const int *) tmp_frame2->linesize, TARGET_PIX_FMT,
                                   output_width_, output_height_, 1);
@@ -389,13 +375,13 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     if (0) {
         FILE *fp = nullptr;
         fopen_s(&fp, "420P.yuv", "ab");
-        fwrite(video_dst_data_ + AV_RAW_HEADER_SIZE, AV_RAW_HEADER_SIZE, size, fp);
+        fwrite(video_dst_data_ + HPP_HEADER_SIZE, HPP_HEADER_SIZE, size, fp);
         fclose(fp);
     }
 
     if (ff_send_data_callback_ && user_data_) {
         if ((ret = ff_send_data_callback_(user_data_, user_handle_,
-                                          video_dst_data_, size + AV_RAW_HEADER_SIZE)) != 0) {
+                                          video_dst_data_, size + HPP_HEADER_SIZE)) != 0) {
 //             if (_ff_exception_callback) {
 //                 _ff_exception_callback(_user_data, _user_handle, ret, (uint8_t*)GetErrorInfo(ret));
 //             }
@@ -407,82 +393,66 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
 
 int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
     int ret = 0;
-    size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(AVSampleFormat(frame->format));
-
-    /* Write the raw audio data samples of the first plane. This works
-     * fine for packed formats (e.g. AV_SAMPLE_FMT_S16). However,
-     * most audio decoders output planar audio, which uses a separate
-     * plane of audio samples for each channel (e.g. AV_SAMPLE_FMT_S16P).
-     * In other words, this code will write only the first audio channel
-     * in these cases.
-     * You should use libswresample or libavfilter to convert the frame
-     * to packed data. */
-    /* write to rawvideo file */
-    if (0) {
-        FILE *fp = nullptr;
-        fopen_s(&fp, "auduio.pcm", "ab");
-        if (fp) {
-            // 获取一个采样点字节数，比如16位采样点值为2字节
-            int data_size = av_get_bytes_per_sample(audio_dec_ctx_->sample_fmt);
-
-            // frame->nb_samples为这个frame中一个声道的采样点的个数
-            for (int i = 0; i < frame->nb_samples; i++)
-                for (int ch = 0; ch < audio_dec_ctx_->channels; ch++)
-                    fwrite(frame->extended_data[ch] + data_size * i, 1, data_size, fp);
-
-            fclose(fp);
+    if (!swr_init_ &&
+        // SDL_QueueAudio方式不支持单声道和planar
+        (av_get_default_channel_layout(frame->channels) == AV_CH_LAYOUT_MONO ||
+         av_sample_fmt_is_planar(audio_dec_ctx_->sample_fmt))) {
+        // init swresample
+        swr_free(&swr_ctx_);
+        swr_ctx_ = swr_alloc_set_opts(NULL,
+            av_get_default_channel_layout(AUDIO_CHANNELS_DEFAULT), AV_SAMPLE_FMT_S16, frame->sample_rate,
+            av_get_default_channel_layout(frame->channels), (AVSampleFormat)(frame->format), frame->sample_rate,
+            0, NULL);
+        if (!swr_ctx_ || swr_init(swr_ctx_) < 0) {
+            swr_free(&swr_ctx_);
+            return -1;
         }
+        swr_init_ = true;
     }
+
+    size_t audio_data_size = av_samples_get_buffer_size(NULL, AUDIO_CHANNELS_DEFAULT, 
+        frame->nb_samples, 
+        AV_SAMPLE_FMT_S16, 0);
+
     if (!audio_dst_data_) {
-        audio_dst_data_ = (uint8_t *) av_malloc(audio_dec_ctx_->channels * unpadded_linesize + AV_RAW_HEADER_SIZE);
+        audio_dst_data_ = (uint8_t*)av_malloc(audio_data_size);
     }
 
     if (!audio_dst_data_) {
         LOG_ERROR << "Can not alloc buffer";
-        ret = AVERROR(ENOMEM);
-        return ret;
+        return AVERROR(ENOMEM);
     }
-
-    // 等待有真正的视频帧之后再发送音频
-    //while (video_stream_ && current_pts_video_in_ms_ <= 0) {
-    //    this_thread::sleep_for(chrono::milliseconds(10));
-    //}
-
-    current_pts_audio_in_ms_ = av_q2d(audio_stream_->time_base) * frame->pts * 1000;
-
-    audio_dst_data_[0] = FF_MEDIA_TYPE_AUDIO; // audio flag
-    audio_dst_data_[1] = av_get_bytes_per_sample(audio_dec_ctx_->sample_fmt);
-    audio_dst_data_[2] = audio_dec_ctx_->channels;
-    audio_dst_data_[3] = getSampleRateInddex(audio_dec_ctx_->sample_rate);
-    audio_dst_data_[4] = (uint8_t) (current_pts_audio_in_ms_ >> 24);
-    audio_dst_data_[5] = (uint8_t) (current_pts_audio_in_ms_ >> 16);
-    audio_dst_data_[6] = (uint8_t) (current_pts_audio_in_ms_ >> 8);
-    audio_dst_data_[7] = (uint8_t) (current_pts_audio_in_ms_);
-
-    int is_planar = av_sample_fmt_is_planar(audio_dec_ctx_->sample_fmt);
-    if (is_planar) {
-        // 获取一个采样点字节数，比如16位采样点值为2字节
-        int data_size = av_get_bytes_per_sample(audio_dec_ctx_->sample_fmt);
-
-        // frame->nb_samples为这个frame中一个声道的采样点的个数
-        int index = 0;
-        for (int i = 0; i < frame->nb_samples; i++) {
-            for (int ch = 0; ch < audio_dec_ctx_->channels; ch++) {
-                memcpy_s(audio_dst_data_ + AV_RAW_HEADER_SIZE + index, audio_dec_ctx_->channels * unpadded_linesize,
-                         frame->extended_data[ch] + data_size * i, data_size);
-                index += data_size;
-            }
+    if (swr_ctx_) {
+        const uint8_t** in = (const uint8_t**)frame->extended_data;
+        if ((ret = swr_convert(swr_ctx_, &audio_dst_data_, frame->nb_samples, in, frame->nb_samples)) < 0) {
+            LOG_ERROR << "swr_convert failed";
+            return ret;
         }
-    } else {// packet
-        memcpy_s(audio_dst_data_ + AV_RAW_HEADER_SIZE, unpadded_linesize, frame->extended_data[0], unpadded_linesize);
+    }
+    else {
+        memcpy_s(audio_dst_data_, audio_data_size, frame->extended_data[0], audio_data_size);
     }
 
-    if (ff_send_data_callback_ && user_data_) {
-        ff_send_data_callback_(user_data_, user_handle_,
-                               audio_dst_data_, audio_dec_ctx_->channels * unpadded_linesize + AV_RAW_HEADER_SIZE);
+    if (0) {
+        FILE* fp = nullptr;
+        fopen_s(&fp, "audio.pcm", "ab");
+        if (fp) {
+            fwrite(audio_dst_data_ + HPP_HEADER_SIZE, 1, audio_data_size, fp);
+            fclose(fp);
+        }
     }
 
-    return 0;
+    if (audio_dev_ >= 2) {
+        SDL_QueueAudio(audio_dev_, audio_dst_data_, audio_data_size);
+        double delay = audio_data_size * 1000.0 / (frame->sample_rate * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16) * 2) - 1;
+
+        //int size = SDL_GetQueuedAudioSize(audio_dev_);
+        //LOG_WARN << "queue size: " << size;
+
+        SDL_Delay(10);
+    }
+
+    return ret;
 }
 
 int FfmpegWrapper::decode_packet(AVCodecContext *dec, const AVPacket *pkt, AVFrame *frame) {
@@ -622,6 +592,25 @@ int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx) {
     ctx->hw_device_ctx = av_buffer_ref(hw_device_ctx_);
 
     return ret;
+}
+
+int FfmpegWrapper::audio_open()
+{
+    SDL_AudioSpec wantSpec, spec;
+    wantSpec.freq = audio_dec_ctx_->sample_rate;
+    wantSpec.format = AUDIO_S16SYS;
+    wantSpec.channels = AUDIO_CHANNELS_DEFAULT;
+    wantSpec.silence = 0;
+    wantSpec.samples = FFMAX(512, 2 << av_log2(wantSpec.freq / 30));
+    wantSpec.callback = NULL;
+
+    if ((audio_dev_ = SDL_OpenAudioDevice(NULL, 0, &wantSpec, &spec, SDL_AUDIO_ALLOW_CHANNELS_CHANGE)) < 2) {
+        LOG_ERROR << "can not open SDL!";
+        return -1;
+    }
+
+    SDL_PauseAudioDevice(audio_dev_, 0);
+    return 0;
 }
 
 int FfmpegWrapper::hw_get_config(const AVCodec *decoder, AVHWDeviceType type) {
