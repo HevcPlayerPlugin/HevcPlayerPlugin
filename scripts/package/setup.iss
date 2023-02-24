@@ -64,7 +64,7 @@ Name: "startupicon"; Description: "Automatic Start"; GroupDescription: "{cm:Addi
 Name: "{commonstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
-Filename: "{app}\player\index.html"; Description: "view example web page"; Flags: postinstall shellexec skipifsilent unchecked
+Filename: "{app}\player\index.html"; Description: "view example web page"; Flags: postinstall shellexec skipifsilent 
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait  skipifsilent
 
 [Code]
