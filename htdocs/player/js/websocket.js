@@ -104,8 +104,8 @@ class webSocketClient {
             "param": {
                 "url": mediaUrl,
                 "use_gpu": gpu,
-                "width": this.width,
-                "height": this.height
+                "width": 1,
+                "height": 1
             }
         }
         this.doSendMessage(JSON.stringify(dataJson));

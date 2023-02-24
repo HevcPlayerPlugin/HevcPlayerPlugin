@@ -50,7 +50,7 @@ public:
     int openDiscardFrames(int enabled);
 
 private:
-    int open_input_url(const char *inputUrl, int retryTimes);
+    int open_input_url(const char *inputUrl, int useTCP, int retryTimes);
 
     int hw_decoder_init(AVCodecContext *ctx);
 

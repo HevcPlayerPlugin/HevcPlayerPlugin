@@ -97,9 +97,8 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
         int video_stream_index;
         int audio_stream_index;
         AVPacket *pkt = nullptr;
-        av_dict_set(&format_options_, "rtsp_transport", useTCP ? "tcp" : "udp", 0); // 设置RTSP传输模式
         do {
-            if ((ret = open_input_url(inputUrl_.c_str(), retryTimes)) != 0) {
+            if ((ret = open_input_url(inputUrl_.c_str(), useTCP, retryTimes)) != 0) {
                 break;
             }
 
@@ -552,9 +551,10 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
     return 0;
 }
 
-int FfmpegWrapper::open_input_url(const char *inputUrl, int retryTimes) {
+int FfmpegWrapper::open_input_url(const char *inputUrl, int useTCP, int retryTimes) {
     int ret = 0;
     do {
+        av_dict_set(&format_options_, "rtsp_transport", useTCP ? "tcp" : "udp", 0);
         if (!(fmt_ctx_ = avformat_alloc_context())) {
             LOG_ERROR << "avformat_alloc_context error";
             ret = -1;
@@ -567,8 +567,9 @@ int FfmpegWrapper::open_input_url(const char *inputUrl, int retryTimes) {
             ret = 0;  // success
             break;
         }
-
-        if (retryTimes-- <= 0) {
+        // try another mode
+        useTCP = useTCP ^ 1;
+        if (--retryTimes <= 0) {
             char buf[128] = {0};
             av_make_error_string(buf, 128, ret);
             LOG_ERROR << "Could not open source file " << inputUrl << "(" << ret << ")" << buf;
