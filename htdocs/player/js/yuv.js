@@ -1,4 +1,4 @@
-https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
 class WebglScreen2D {
     constructor(canvas) {
         this.canvas = canvas;
