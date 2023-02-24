@@ -1,3 +1,24 @@
+
+class WebglScreen2D {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.gl = canvas.getContext('2d')
+    }
+    renderImg(width, height, data) {
+        const init = {timestamp: 0, codedWidth: width, codedHeight: height, format: 'I420'};
+        let videoFrame = new VideoFrame(data, init)
+        let gl = this.gl;
+        gl.drawImage(videoFrame, 0, 0, width, height);
+        videoFrame.close();
+    }
+    setSize(width, height, maxWidth) {
+        let canvasWidth = Math.min(maxWidth, width);
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+    destroy() {
+    }
+}
 // https://juejin.im/post/5de29d7be51d455f9b335efa
 class WebglScreen {
     constructor(canvas) {
@@ -282,9 +303,6 @@ class WebglScreen {
 
     destroy() {
         const { gl } = this;
-
-        gl.clear(
-            gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT,
-        );
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
     }
 }

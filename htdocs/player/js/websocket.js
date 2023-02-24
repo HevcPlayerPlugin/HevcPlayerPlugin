@@ -23,7 +23,7 @@ class webSocketClient {
     initYuvPlayer(w, h, canvas) {
         canvas.width = w;
         canvas.height = h;
-        this.yuvPlayer = new WebglScreen(canvas);
+        this.yuvPlayer = new WebglScreen2D(canvas);
     }
 
     initWebsocket() {
