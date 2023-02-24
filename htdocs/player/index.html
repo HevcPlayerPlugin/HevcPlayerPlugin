@@ -5,13 +5,14 @@
     <meta charset="UTF-8">
     
     <link rel="stylesheet" href="./styles/style.css">
-    <title>Hevc Player Demo</title>
+    <title>HevcPlayerPlugin Demo Player</title>
     <script src="./js/yuv.js"></script>
     <script src="./js/layout.js"></script>
     <script src="./js/websocket.js"></script>
 </head>
 
 <body>
+    <br><br>
     <div id="vidPlayerComp">
         <div class="row playerToolbar">
             <div class="exp-left">
@@ -54,6 +55,8 @@
         <button onclick=repeatStop()>brenchmark test stop</button>
         <button onclick=getVersion()>get version</button>
         <a href="HevcPlayerPluginProtocol://">启动服务</a>
+        <a href="https://github.com/duiniuluantanqin/HevcPlayerPlugin" target="_blank">Github</a>
+        <a href="https://github.com/duiniuluantanqin/HevcPlayerPlugin/wiki" target="_blank">文档</a>
     </div>
 </body>
 
@@ -99,7 +102,7 @@ function discardFrames(numScreen) {
 }
 function changeResolution(numScreen) {
     for (var i = 0; i < numScreen; i++) {
-        if (numScreen >= 1 && numScreen <= 4) {
+        if (numScreen > 1 && numScreen <= 4) {
             ws[i].doChangeResolution(3);
         } else if (numScreen > 4 && numScreen <= 9) {
             ws[i].doChangeResolution(2);

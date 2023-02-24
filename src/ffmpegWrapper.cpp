@@ -11,7 +11,7 @@
 #pragma warning (disable: 4819)
 #pragma warning (disable: 26812)
 
-constexpr enum AVPixelFormat TARGET_PIX_FMT = AV_PIX_FMT_YUV420P;
+constexpr enum AVPixelFormat TARGET_PIX_FMT = AV_PIX_FMT_NV12;//  AV_PIX_FMT_YUV420P;
 constexpr int HPP_HEADER_SIZE = 8;
 constexpr int DISCARD_FRAME_FREQUENCY = 2;
 constexpr int MAX_PACKET_VIDEO = 10;
@@ -121,9 +121,8 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
                 audio_stream_ = fmt_ctx_->streams[audio_stream_index];
             }
 
-            if ((ret = audio_open()) < 0) {
-                ret = -1;
-                break;
+            if (audio_open() < 0) {
+                LOG_WARN << "audio open failed. Maybe too many request.";
             }
 
             /* dump input information to stderr */
