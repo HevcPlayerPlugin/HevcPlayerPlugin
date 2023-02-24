@@ -14,11 +14,13 @@
 
 **WebGL**
 
-H5使用Canvas来绘图，采用YUV420格式。为了提升渲染性能，限定了视频分辨率，要求图像宽度必须为8的倍数（使用FFmpeg的libswscale模块进行转换）。代码来自于：[IVWEB 玩转 WASM 系列-WEBGL YUV渲染图像实践](https://juejin.cn/post/6844904008054751246)
+~~H5使用Canvas来绘图，采用YUV420格式。为了提升渲染性能，限定了视频分辨率，要求图像宽度必须为8的倍数（使用FFmpeg的libswscale模块进行转换）。代码来自于：[IVWEB 玩转 WASM 系列-WEBGL YUV渲染图像实践](https://juejin.cn/post/6844904008054751246)~~
+H5使用Canvas来绘图，默认采用NV12格式。YUV数据首先被构建为`VideoFrame`，再通过`drawImage`进行绘图。代码比之前的方式要简洁很多。
 
 ~~**Web Audio**~~
 
 ~~FFmpeg解码出来的音频数据是PCM格式，使用H5的Web Audio Api来播放，代码来自于： [pcm-player](https://github.com/samirkumardas/pcm-player)~~
+Web Audio兼容性不好，某些PCMA音频会出现噪音，修改为SDL2播放。
 
 **前端示例**
 
