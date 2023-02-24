@@ -14,8 +14,6 @@ class webSocketClient {
         this.ws = null;
         this.yuvPlayer = null;
         this.avRawHeaderSize = 8;
-        this.width = 1280;
-        this.height = 720;
 
         this.checkInit();
     }
@@ -58,7 +56,7 @@ class webSocketClient {
     checkInit() {
         let that = this;
         if (that.yuvPlayer == null) {
-            that.initYuvPlayer(1280, 720, that.canvas);
+            that.initYuvPlayer(1, 1, that.canvas);
         }
         if (that.ws == null) {
             that.initWebsocket();
@@ -75,12 +73,6 @@ class webSocketClient {
             // video-yuv420P
             if (that.yuvPlayer == null) {
                 return;
-            }
-
-            if (that.width != w || that.height != h) {
-                    that.yuvPlayer.setSize(w, h, w);
-                    that.width = w;
-                    that.height = h;
             }
             that.yuvPlayer.renderImg(w, h, new Uint8Array(data, that.avRawHeaderSize, w * h * 3 / 2));
         } else {
