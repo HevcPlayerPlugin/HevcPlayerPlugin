@@ -446,7 +446,7 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
 
         //int size = SDL_GetQueuedAudioSize(audio_dev_);
         //LOG_WARN << "queue size: " << size;
-
+        //TODO:
         SDL_Delay(10);
     }
 
@@ -646,20 +646,18 @@ enum AVPixelFormat FfmpegWrapper::hw_get_format(AVCodecContext *ctx, const enum 
 void FfmpegWrapper::audio_decode_thread() {
     int ret = 0;
     try {
-        AVPacket *pkt = av_packet_alloc();
-        AVFrame *frame = av_frame_alloc();
+        AVPacketPtr pkt(av_packet_alloc(), [](AVPacket* p) {av_packet_free(&p);});
+        AVFramePtr frame(av_frame_alloc(), [](AVFrame* f) {av_frame_free(&f);});
         do {
             if (stop_request_)
                 break;
-            if ((ret = audio_packet_queue_.get(pkt)) < 0)
+            if ((ret = audio_packet_queue_.get(pkt.get())) < 0)
                 break;
 
-            ret = decode_packet(audio_dec_ctx_, pkt, frame);
-            av_packet_unref(pkt);
+            ret = decode_packet(audio_dec_ctx_, pkt.get(), frame.get());
+            av_packet_unref(pkt.get());
             this_thread::sleep_for(chrono::milliseconds(1));
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
-        av_packet_free(&pkt);
-        av_frame_free(&frame);
 
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
@@ -674,23 +672,21 @@ void FfmpegWrapper::audio_decode_thread() {
 void FfmpegWrapper::video_decode_thread() {
     int ret = 0;
     try {
-        AVPacket *pkt = av_packet_alloc();
-        AVFrame *frame = av_frame_alloc();
+        AVPacketPtr pkt(av_packet_alloc(), [](AVPacket* p) {av_packet_free(&p); });
+        AVFramePtr frame(av_frame_alloc(), [](AVFrame* f) {av_frame_free(&f); });
         std::chrono::steady_clock::time_point tp = std::chrono::steady_clock::now();
         do {
             if (stop_request_)
                 break;
-            if ((ret = video_packet_queue_.get(pkt)) < 0)
+            if ((ret = video_packet_queue_.get(pkt.get())) < 0)
                 break;
 
-            ret = decode_packet(video_dec_ctx_, pkt, frame);
-            av_packet_unref(pkt);
+            ret = decode_packet(video_dec_ctx_, pkt.get(), frame.get());
+            av_packet_unref(pkt.get());
             int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
             tp += std::chrono::microseconds(duration);
             std::this_thread::sleep_until(tp);
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
-        av_packet_free(&pkt);
-        av_frame_free(&frame);
 
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {

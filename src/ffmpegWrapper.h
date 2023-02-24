@@ -27,6 +27,8 @@ typedef std::function<int(void *user, uintptr_t handle, int err_code, const uint
 
 class FfmpegWrapper {
 public:
+    using AVPacketPtr = std::shared_ptr<AVPacket>;
+    using AVFramePtr = std::shared_ptr<AVFrame>;
     FfmpegWrapper();
 
     virtual ~FfmpegWrapper();
