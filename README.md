@@ -65,7 +65,7 @@ cmake . -A "Win32" -B build
 
 > 备注： Chrome一个标签页最多只能创建16个WebGL Context，所以1080P测试的GPU使用率并没有达到100%，理论上应该能达到25路。
 ## 示例
-[下载](https://github.com/duiniuluantanqin/HevcPlayerPlugin/releases/download/v0.1.4/HevcPlayerPlugin.Setup-0.1.4.exe)已经编译好的Windows二进制文件，安装后打开测试页面，路径在程序安装目录下`player/index.html`。
+[下载](https://github.com/duiniuluantanqin/HevcPlayerPlugin/releases/)已经编译好的Windows二进制文件，安装后打开测试页面，路径在程序安装目录下`player/index.html`。
 <br>
 ![demo.png](docs/images/demo.png)
 
