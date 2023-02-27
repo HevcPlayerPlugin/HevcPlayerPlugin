@@ -67,9 +67,19 @@ input {
 }
 
 .canvasDiv {
+    position: relative;
     margin: 0 auto;
     width: 725px;
     height: 423px
+}
+
+.status-bar {
+  position: absolute; /* 设置第二个子节点的 position 属性为 absolute */
+  bottom: 0; /* 将第二个子节点的底部位置设置为父节点的底部位置 */
+  width: 100%;
+  height: 30px;
+  background-color: rgba(204, 204, 204, 0.5); /* 设置半透明背景颜色 */
+  z-index: 1; /* 将第二个子节点的 z-index 属性设置为比第一个子节点更高 */
 }
 
 .no-padding {

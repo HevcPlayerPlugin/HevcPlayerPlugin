@@ -70,6 +70,9 @@ class webSocketClient {
             let header = new Uint8Array(data, 0, that.avRawHeaderSize);
             let w = (header[0] << 8) + header[1];
             let h = (header[2] << 8) + header[3];
+            let ts = (header[4] << 24) + (header[5] << 16) + (header[6] << 8) + header[7];
+            const status = document.getElementById('status');
+            status.textContent = "分辨率：" + w + "*" + h + ", 时间戳：" + ts;
             // video-yuv420P
             if (that.yuvPlayer == null) {
                 return;

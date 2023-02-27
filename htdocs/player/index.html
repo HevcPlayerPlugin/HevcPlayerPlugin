@@ -6,7 +6,7 @@
     
     <link rel="stylesheet" href="./styles/style.css">
     <title>HevcPlayerPlugin Demo Player</title>
-    <script src="./js/yuv.js"></script>
+    <script src="./js/webgl.js"></script>
     <script src="./js/layout.js"></script>
     <script src="./js/websocket.js"></script>
 </head>
@@ -25,8 +25,9 @@
                 <label><input class="mui-switch mui-switch-animbg" type="checkbox" id="checkboxSelfAdaption" checked> 自适应码流</label>   
             </div>
         </div>
-        <div class="row canvasDiv">            
+        <div id="playerContainer" class="row canvasDiv">
             <div id="player"> </div>
+            <div id="status" class="status-bar">11111111111111111111111</div>     
         </div>        
         <div class="row playerToolbar">
             <div style="width: 80%" class="exp-left">
@@ -133,7 +134,21 @@ window.onload = function () {
         let can = UILayout.GetContainer().children[i];
         ws[i] = new webSocketClient(defaultPort, can);
     }
+    showStatus();
 } 
+
+function showStatus() {
+    const parent = document.getElementById('playerContainer');
+    const child = document.getElementById('status');
+
+    parent.addEventListener('mouseenter', () => {
+        child.style.display = 'block';
+    });
+
+    parent.addEventListener('mouseleave', () => {
+        child.style.display = 'none';
+    });
+}
 function changeLayout(numScreen) {
     myStop();
     UILayout.LayoutScreens(numScreen);
