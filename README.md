@@ -1,3 +1,9 @@
+![GitHub](https://img.shields.io/github/license/HevcPlayerPlugin/HevcPlayerPlugin)
+![GitHub all releases](https://img.shields.io/github/downloads/HevcPlayerPlugin/HevcPlayerPlugin/total)
+[![](https://img.shields.io/badge/language-c++-red.svg)](https://en.cppreference.com/)
+[![](https://img.shields.io/badge/platform-windows-blue.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
+[![](https://img.shields.io/badge/PRs-welcome-yellow.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/pulls)
+[![](https://github.com/ZLMediaKit/ZLMediaKit/actions/workflows/windows.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
 ## 声明
 本项目采用宽松的MIT软件许可协议。
 
