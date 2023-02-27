@@ -27,7 +27,7 @@
         </div>
         <div id="playerContainer" class="row canvasDiv">
             <div id="player"> </div>
-            <div id="status" class="status-bar">11111111111111111111111</div>     
+            <div id="status" class="status-bar"></div>     
         </div>        
         <div class="row playerToolbar">
             <div style="width: 80%" class="exp-left">
@@ -128,15 +128,18 @@ function getVersion() {
         ws[0].doGetVersion();
     }
 }
-window.onload = function () {
-    UILayout.Init("player", defaultScreenNum, maxScreenNum);
-    for(var i = 0; i < maxScreenNum; i++) {
-        let can = UILayout.GetContainer().children[i];
-        ws[i] = new webSocketClient(defaultPort, can);
+function formatTime(millisecond) {
+    let seconds = Math.round(millisecond / 1000);
+    let result = [];
+    let count = 2;
+    while(count >= 0) {
+        let current = Math.floor(seconds / (60 ** count));
+        result.push(current);
+        seconds -= current * (60 ** count);
+        --count;
     }
-    showStatus();
-} 
-
+    return result.map(item => item <= 9 ? `0${item}` : item).join(":")
+}
 function showStatus() {
     const parent = document.getElementById('playerContainer');
     const child = document.getElementById('status');
@@ -153,6 +156,19 @@ function changeLayout(numScreen) {
     myStop();
     UILayout.LayoutScreens(numScreen);
     checkSelfAdaption(numScreen);
+} 
+window.onload = function () {
+    UILayout.Init("player", defaultScreenNum, maxScreenNum);
+    for(var i = 0; i < maxScreenNum; i++) {
+        let can = UILayout.GetContainer().children[i];
+        ws[i] = new webSocketClient(defaultPort, can, i, function(index, w, h, ts){
+            if (index == 0) {
+                const status = document.getElementById('status');
+                status.textContent = "分辨率：" + w + "*" + h + ", 时间戳： " + formatTime(ts);
+            }
+        });
+    }
+    showStatus();
 } 
 </script>
 </html>

@@ -1,5 +1,5 @@
 class webSocketClient {
-    constructor(port, canvas) {
+    constructor(port, canvas, index, callback) {
         this.resolutionArray = [  //分辨率
             [0, 0],
             [256, 144],
@@ -8,9 +8,10 @@ class webSocketClient {
             [1280, 720],
             [1920, 1080]
         ];
+        this.index = index;
         this.port = port;
-
         this.canvas = canvas;
+        this.callback = callback;
         this.ws = null;
         this.yuvPlayer = null;
         this.avRawHeaderSize = 8;
@@ -71,8 +72,9 @@ class webSocketClient {
             let w = (header[0] << 8) + header[1];
             let h = (header[2] << 8) + header[3];
             let ts = (header[4] << 24) + (header[5] << 16) + (header[6] << 8) + header[7];
-            const status = document.getElementById('status');
-            status.textContent = "分辨率：" + w + "*" + h + ", 时间戳：" + ts;
+            if (that.callback) {
+                that.callback(that.index, w, h, ts);
+            }
             // video-yuv420P
             if (that.yuvPlayer == null) {
                 return;
