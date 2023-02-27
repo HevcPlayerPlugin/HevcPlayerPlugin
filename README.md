@@ -4,6 +4,7 @@
 [![](https://img.shields.io/badge/platform-windows-blue.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
 [![](https://img.shields.io/badge/PRs-welcome-yellow.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/pulls)
 [![](https://github.com/ZLMediaKit/ZLMediaKit/actions/workflows/windows.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
+[![](https://img.shields.io/badge/chat-QQ%E7%BE%A4-brightgreen)](https://jq.qq.com/?_wv=1027&k=N2VUK58S)
 ## 声明
 本项目采用宽松的MIT软件许可协议。
 
