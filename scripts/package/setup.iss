@@ -35,6 +35,7 @@ OutputBaseFilename={#MyAppName} Setup-{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile="..\..\resource\icon\logo.ico"
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
