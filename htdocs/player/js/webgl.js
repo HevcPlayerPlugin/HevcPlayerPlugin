@@ -5,7 +5,7 @@ class WebglScreen2D {
         this.gl = canvas.getContext('2d')
     }
     renderImg(width, height, data) {
-        this.setSize(width, height, width);
+        this.setSize(width, height);
         // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/format
         const init = {timestamp: 0, codedWidth: width, codedHeight: height, format: 'NV12'};
         let videoFrame = new VideoFrame(data, init)

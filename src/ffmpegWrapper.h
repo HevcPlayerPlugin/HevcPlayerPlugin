@@ -20,9 +20,17 @@ extern "C" {
 #include <libavutil/fifo.h>
 #include <libavutil/time.h>
 #include <libswresample/swresample.h>
+#include <libavutil/ffversion.h>
 }
 
-typedef std::function<int(void *user, uintptr_t handle, uint8_t *data, size_t length)> FF_SEND_DATA_CALLBACK;
+#undef av_err2str
+#define av_err2str(errnum) \
+av_make_error_string((char*)_malloca(AV_ERROR_MAX_STRING_SIZE), AV_ERROR_MAX_STRING_SIZE, errnum)
+#undef av_ts2timestr
+#define av_ts2timestr(ts, tb) \
+av_ts_make_time_string((char*)_malloca(AV_TS_MAX_STRING_SIZE), ts, tb)
+
+typedef std::function<int(void *user, uintptr_t handle, uint8_t *data, size_t length)> FF_RAW_DATA_CALLBACK;
 typedef std::function<int(void *user, uintptr_t handle, int err_code, const uint8_t *err_desc)> FF_EXCEPTION_CALLBACK;
 
 class FfmpegWrapper {
@@ -34,12 +42,9 @@ public:
     virtual ~FfmpegWrapper();
 
 public:
-    int showBanner();
-
     // suggest be called before startPlay, NOT MUST.
-    int setSendDataCallback(void *user, uintptr_t handle, const FF_SEND_DATA_CALLBACK &pfn);
-
-    int setExceptionCallback(void *user, uintptr_t handle, const FF_EXCEPTION_CALLBACK &pfn);
+    int setCallback(void *user, uintptr_t handle, 
+        const FF_RAW_DATA_CALLBACK &pfn, const FF_EXCEPTION_CALLBACK& pfn2);
 
     int startPlay(const char *inputUrl, int width, int height,
                   int useGPU = 1, int useTCP = 1, int retryTimes = 3);
@@ -59,6 +64,10 @@ private:
     int audio_open();
 
     int hw_get_config(const AVCodec *decoder, AVHWDeviceType type);
+
+    int retrieve_frame(AVFrame* in, AVFrame** out);
+
+    int scale_frame(AVFrame* in, AVFrame** out);
 
     int output_video_frame(AVFrame *frame);
 
@@ -84,7 +93,6 @@ private:
     AVHWDeviceType device_type_;
     static enum AVPixelFormat hw_pix_fmt_;
 
-    AVDictionary *format_options_;
     AVFormatContext *fmt_ctx_;
     time_t preTime_;
 
@@ -110,7 +118,7 @@ private:
     PacketQueue video_packet_queue_;
 
     AVFrame *sw_frame_;
-    AVFrame *frameYUV420_;
+    AVFrame *frameYUV_;
 
     uint8_t *video_dst_data_;
     uint8_t *audio_dst_data_;
@@ -124,7 +132,7 @@ private:
 
     void *user_data_;
     uintptr_t user_handle_;
-    FF_SEND_DATA_CALLBACK ff_send_data_callback_;
+    FF_RAW_DATA_CALLBACK ff_send_data_callback_;
     FF_EXCEPTION_CALLBACK ff_exception_callback_;
 
     SDL_AudioDeviceID audio_dev_;

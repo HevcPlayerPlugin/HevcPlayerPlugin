@@ -115,24 +115,23 @@ int SignalSession::playVideo(WebsocketServer *ws, uintptr_t hdl, const Json::Val
     }
 
     FfmpegWrapperPtr ffPtr = std::make_shared<FfmpegWrapper>();
-    ffPtr->setSendDataCallback((void *) ws, hdl, [](void *user, uintptr_t handle, uint8_t *data, size_t length) -> int {
-        if (length > YUV444_4K) {
-            LOG_ERROR << " Msg too large to send(size=" << length << ")";
-            return -1;
-        }
-        WebsocketServer *ws = static_cast<WebsocketServer *>(user);
-        return ws->Send(handle, data, length);
+    ffPtr->setCallback((void *) ws, hdl, 
+        [](void *user, uintptr_t handle, uint8_t *data, size_t length) -> int {
+            if (length > YUV444_4K) {
+                LOG_ERROR << " Msg too large to send(size=" << length << ")";
+                return -1;
+            }
+            WebsocketServer *ws = static_cast<WebsocketServer *>(user);
+            return ws->Send(handle, data, length);}, 
+        [](void* user, uintptr_t handle, int err_code, const uint8_t* err_desc) -> int {
+            Json::Value responseBody;
+            responseBody["result"] = err_code;
+            responseBody["message"] = (const char*)err_desc;
+            WebsocketServer* ws = static_cast<WebsocketServer*>(user);
+            return ws->Send(handle, (uint8_t*)responseBody.toStyledString().c_str(),
+                responseBody.toStyledString().size(),
+                WebsocketServer::OpCode::text);
     });
-    ffPtr->setExceptionCallback((void *) ws, hdl,
-                                [](void *user, uintptr_t handle, int err_code, const uint8_t *err_desc) -> int {
-                                    Json::Value responseBody;
-                                    responseBody["result"] = err_code;
-                                    responseBody["message"] = (const char *) err_desc;
-                                    WebsocketServer *ws = static_cast<WebsocketServer *>(user);
-                                    return ws->Send(handle, (uint8_t *) responseBody.toStyledString().c_str(),
-                                                    responseBody.toStyledString().size(),
-                                                    WebsocketServer::OpCode::text);
-                                });
 
     int ret = UnknownError;
     if ((ret = ffPtr->startPlay(url.c_str(), width, height, useGPU, useTCP)) != NoneError) {

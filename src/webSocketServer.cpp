@@ -149,7 +149,7 @@ int WebsocketServer::Send(uintptr_t key, uint8_t *buf, unsigned int len, OpCode 
         }
     }
     catch (...) {
-        LOG_ERROR << "Send catch error ";
+        LOG_ERROR << "WebsocketServer Send error ";
     }
 
     return 0;

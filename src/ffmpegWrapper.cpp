@@ -4,7 +4,7 @@
 #include <chrono>         // std::chrono::seconds
 #include "error.h"
 
-#include <libavutil/ffversion.h>
+
 #include <config.h>
 
 #pragma warning (disable: 4996)
@@ -25,26 +25,30 @@ constexpr int gResolution_[][2] = {
         {1280, 720},    //            4分屏
         {1920, 1080}    //            1分屏
 };
-static int judgeVideoResolution(uint16_t width, uint16_t height) {
-    int ret = -1;
+static int checkVideoResolution(uint16_t width, uint16_t height) {
     for (const auto &vr: gResolution_) {
-        if (vr[0] != width) {
-            continue;
-        }
+        if (vr[0] != width) continue;
         return vr[1] == height ? 0 : -1;
     }
-    return ret;
+    return -1;
+}
+
+static int showBanner() {
+    av_log(NULL, AV_LOG_WARNING, "\nversion " FFMPEG_VERSION);
+    av_log(NULL, AV_LOG_WARNING, " built with %s\n", CC_IDENT);
+    av_log(NULL, AV_LOG_WARNING, "configuration: " FFMPEG_CONFIGURATION "\n\n");
+    return 0;
 }
 
 AVPixelFormat FfmpegWrapper::hw_pix_fmt_ = AV_PIX_FMT_DXVA2_VLD;
-
-FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), format_options_(nullptr), sws_init_(false), sws_ctx_(nullptr),
+FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(nullptr),
                                  video_dec_ctx_(nullptr), audio_dec_ctx_(nullptr), hw_device_ctx_(nullptr),
-                                 sw_frame_(nullptr), frameYUV420_(nullptr), stop_request_(0), video_dst_data_(nullptr),
+                                 sw_frame_(nullptr), frameYUV_(nullptr), stop_request_(0), video_dst_data_(nullptr),
                                  audio_dst_data_(nullptr), current_pts_audio_in_ms_(0), current_pts_video_in_ms_(0),
                                  output_width_(-1), output_height_(-1), audio_stream_(nullptr), video_stream_(nullptr),
                                  useGPU_(0), user_data_(nullptr), user_handle_(0), discard_frame_index_(0),
-                                 discard_frame_enabled_(1), swr_init_(false), swr_ctx_(nullptr), audio_dev_(0) {
+                                 discard_frame_enabled_(1), swr_init_(false), swr_ctx_(nullptr), audio_dev_(0),
+                                 device_type_(AV_HWDEVICE_TYPE_NONE){
 #ifdef _DEBUG
     showBanner();
     av_log_set_level(AV_LOG_INFO);
@@ -63,24 +67,11 @@ FfmpegWrapper::~FfmpegWrapper() {
     SDL_Quit();
 }
 
-int FfmpegWrapper::showBanner() {
-    av_log(NULL, AV_LOG_WARNING, "\nversion " FFMPEG_VERSION);
-    av_log(NULL, AV_LOG_WARNING, " built with %s\n", CC_IDENT);
-    av_log(NULL, AV_LOG_WARNING, "configuration: " FFMPEG_CONFIGURATION "\n\n");
-    return 0;
-}
-
-int FfmpegWrapper::setSendDataCallback(void *user, uintptr_t handle, const FF_SEND_DATA_CALLBACK &pfn) {
+int FfmpegWrapper::setCallback(void *user, uintptr_t handle, const FF_RAW_DATA_CALLBACK &pfn, const FF_EXCEPTION_CALLBACK& pfn2) {
     user_data_ = user;
     user_handle_ = handle;
     ff_send_data_callback_ = pfn;
-    return 0;
-}
-
-int FfmpegWrapper::setExceptionCallback(void *user, uintptr_t handle, const FF_EXCEPTION_CALLBACK &pfn) {
-    user_data_ = user;
-    user_handle_ = handle;
-    ff_exception_callback_ = pfn;
+    ff_exception_callback_ = pfn2;
     return 0;
 }
 
@@ -104,13 +95,13 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
 
             /* retrieve stream information */
             if ((ret = avformat_find_stream_info(fmt_ctx_, NULL)) < 0) {
-                LOG_ERROR << "Could not find stream information";
+                LOG_ERROR << "Could not find stream information:" << av_err2str(ret);
                 break;
             }
 
             if (open_codec_context(&video_stream_index, &video_dec_ctx_, fmt_ctx_, AVMEDIA_TYPE_VIDEO) >= 0) {
                 video_stream_ = fmt_ctx_->streams[video_stream_index];
-                if (0 != judgeVideoResolution(output_width_, output_height_)) {
+                if (0 != checkVideoResolution(output_width_, output_height_)) {
                     output_width_ = video_dec_ctx_->width;
                     output_height_ = video_dec_ctx_->height;
                 }
@@ -187,9 +178,7 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
             audio_packet_queue_.put(pkt);
 
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
-            char buf[128] = {0};
-            av_make_error_string(buf, 128, ret);
-            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *) buf);
+            ff_exception_callback_(user_data_, user_handle_, ret, (const uint8_t*)av_err2str(ret));
         }
         av_packet_free(&pkt);
     }));
@@ -214,16 +203,8 @@ int FfmpegWrapper::stopPlay() {
         main_read_thread_handle_.join();
     }
 
-    av_dict_free(&format_options_);
-    if (sws_ctx_) {
-        sws_freeContext(sws_ctx_);
-        sws_ctx_ = nullptr;
-    }
-
-    if (swr_ctx_) {
-        swr_free(&swr_ctx_);
-        swr_ctx_ = nullptr;
-    }
+    sws_freeContext(sws_ctx_);
+    swr_free(&swr_ctx_);
 
     avcodec_free_context(&video_dec_ctx_);
     avcodec_free_context(&audio_dec_ctx_);
@@ -231,7 +212,7 @@ int FfmpegWrapper::stopPlay() {
     av_buffer_unref(&hw_device_ctx_);
 
     av_frame_free(&sw_frame_);
-    av_frame_free(&frameYUV420_);
+    av_frame_free(&frameYUV_);
     av_freep(&video_dst_data_);
     av_freep(&audio_dst_data_);
 
@@ -258,6 +239,78 @@ int FfmpegWrapper::openDiscardFrames(int enabled) {
     return 0;
 }
 
+int FfmpegWrapper::retrieve_frame(AVFrame* in, AVFrame** out) {
+    int ret = 0;
+    if (in->format != hw_pix_fmt_) {
+        *out = in;
+        return ret;
+    }
+
+    /* retrieve data from GPU to CPU */
+    if ((ret = av_hwframe_transfer_data(sw_frame_, in, 0)) < 0) {
+        LOG_ERROR << "Error transferring the data to system memory(" << av_err2str(ret);
+        return 0;
+    }
+    *out = sw_frame_;
+    return ret;
+}
+
+int FfmpegWrapper::scale_frame(AVFrame* in, AVFrame** out) {
+    int ret = 0;
+    if (in->width == output_width_ && in->height == output_height_ &&
+        in->format == TARGET_PIX_FMT) {
+        *out = in;
+        return ret;
+    }
+
+    if (!sws_init_) {
+        if (sws_ctx_) {
+            sws_freeContext(sws_ctx_);
+            sws_ctx_ = nullptr;
+        }
+        av_frame_free(&frameYUV_);
+        av_freep(&video_dst_data_);
+    }
+    if (!sws_ctx_) {
+        // 如果明确是要缩小并显示，建议使用SWS_POINT算法
+        // 在不明确是放大还是缩小时，直接使用 SWS_FAST_BILINEAR 算法即可。
+        sws_ctx_ = sws_getContext(in->width, in->height,
+            (AVPixelFormat)in->format,
+            output_width_, output_height_,
+            TARGET_PIX_FMT,
+            SWS_POINT, NULL, NULL, NULL);
+    }
+
+    if (!frameYUV_) {
+        frameYUV_ = av_frame_alloc();
+        if (!frameYUV_) {
+            LOG_ERROR << "Could not allocate frame";
+            ret = AVERROR(ENOMEM);
+            return ret;
+        }
+
+        frameYUV_->format = TARGET_PIX_FMT;
+        frameYUV_->width = output_width_;
+        frameYUV_->height = output_height_;
+
+        ret = av_frame_get_buffer(frameYUV_, 0);
+        if (ret < 0) {
+            LOG_ERROR << "Could not av_frame_get_buffer";
+            return ret;
+        }
+        sws_init_ = true;
+    }
+
+    ret = sws_scale(sws_ctx_, (const uint8_t* const*)in->data, in->linesize,
+        0, in->height, frameYUV_->data, frameYUV_->linesize);
+    if (ret != frameYUV_->height) {
+        LOG_ERROR << "Could not sws_scale frame";
+        return ret;
+    }
+    *out = frameYUV_;
+    return 0;
+}
+
 int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     int ret = 0;
     AVFrame *tmp_frame = nullptr;
@@ -268,70 +321,12 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
         return 0;
     }
 
-    if (frame->format == hw_pix_fmt_) {
-        /* retrieve data from GPU to CPU */
-        if ((ret = av_hwframe_transfer_data(sw_frame_, frame, 0)) < 0) {
-            char buf[128] = { 0 };
-            av_make_error_string(buf, 128, ret);
-            LOG_ERROR << "Error transferring the data to system memory(" << buf;
-            // TODO: 错误处理
-            return 0;
-        }
-        tmp_frame = sw_frame_;
-    } else {
-        tmp_frame = frame;
+    if ((ret = retrieve_frame(frame, &tmp_frame)) < 0) {
+        return ret;
     }
 
-    // 分辨率改变之后，需要重新初始化sws
-    if (tmp_frame->width != output_width_ || tmp_frame->height != output_height_ ||
-        tmp_frame->format != TARGET_PIX_FMT) {
-        if (!sws_init_) {
-            if (sws_ctx_) {
-                sws_freeContext(sws_ctx_);
-                sws_ctx_ = nullptr;
-            }
-            av_frame_free(&frameYUV420_);
-            av_freep(&video_dst_data_);
-        }
-        if (!sws_ctx_) {
-            // 如果明确是要缩小并显示，建议使用SWS_POINT算法
-            // 在不明确是放大还是缩小时，直接使用 SWS_FAST_BILINEAR 算法即可。
-            sws_ctx_ = sws_getContext(tmp_frame->width, tmp_frame->height,
-                                      (AVPixelFormat) tmp_frame->format,
-                                      output_width_, output_height_,
-                                      TARGET_PIX_FMT,
-                                      SWS_POINT, NULL, NULL, NULL);
-        }
-
-        if (!frameYUV420_) {
-            frameYUV420_ = av_frame_alloc();
-            if (!frameYUV420_) {
-                LOG_ERROR << "Could not allocate frame";
-                ret = AVERROR(ENOMEM);
-                return ret;
-            }
-
-            frameYUV420_->format = TARGET_PIX_FMT;
-            frameYUV420_->width = output_width_;
-            frameYUV420_->height = output_height_;
-
-            ret = av_frame_get_buffer(frameYUV420_, 0);
-            if (ret < 0) {
-                LOG_ERROR << "Could not av_frame_get_buffer";
-                return ret;
-            }
-            sws_init_ = true;
-        }
-
-        ret = sws_scale(sws_ctx_, (const uint8_t *const *) tmp_frame->data, tmp_frame->linesize,
-                        0, tmp_frame->height, frameYUV420_->data, frameYUV420_->linesize);
-        if (ret != frameYUV420_->height) {
-            LOG_ERROR << "Could not sws_scale frame";
-            return ret;
-        }
-        tmp_frame2 = frameYUV420_;
-    } else {
-        tmp_frame2 = tmp_frame;
+    if ((ret = scale_frame(tmp_frame, &tmp_frame2)) < 0) {
+        return ret;
     }
 
     int size = av_image_get_buffer_size(TARGET_PIX_FMT, output_width_, output_height_, 1);
@@ -339,8 +334,7 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
         video_dst_data_ = (uint8_t *) av_malloc(size + HPP_HEADER_SIZE);
         if (!video_dst_data_) {
             LOG_ERROR << "Can not alloc buffer";
-            ret = AVERROR(ENOMEM);
-            return ret;
+            return AVERROR(ENOMEM);
         }
     }
 
@@ -365,7 +359,7 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
                                   (const int *) tmp_frame2->linesize, TARGET_PIX_FMT,
                                   output_width_, output_height_, 1);
     if (ret < 0) {
-        LOG_ERROR << "Can not copy image to buffer";
+        LOG_ERROR << "Can not copy image to buffer: " << av_err2str(ret);
         return ret;
     }
 
@@ -409,8 +403,7 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
     }
 
     size_t audio_data_size = av_samples_get_buffer_size(NULL, AUDIO_CHANNELS_DEFAULT, 
-        frame->nb_samples, 
-        AV_SAMPLE_FMT_S16, 0);
+        frame->nb_samples, AV_SAMPLE_FMT_S16, 0);
 
     if (!audio_dst_data_) {
         audio_dst_data_ = (uint8_t*)av_malloc(audio_data_size);
@@ -423,7 +416,7 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
     if (swr_ctx_) {
         const uint8_t** in = (const uint8_t**)frame->extended_data;
         if ((ret = swr_convert(swr_ctx_, &audio_dst_data_, frame->nb_samples, in, frame->nb_samples)) < 0) {
-            LOG_ERROR << "swr_convert failed";
+            LOG_ERROR << "swr_convert failed:" << av_err2str(ret);
             return ret;
         }
     }
@@ -459,8 +452,6 @@ int FfmpegWrapper::decode_packet(AVCodecContext *dec, const AVPacket *pkt, AVFra
     // submit the packet to the decoder
     ret = avcodec_send_packet(dec, pkt);
     if (ret < 0 && ret != AVERROR_EOF) {
-        char buf[128] = { 0 };
-        av_make_error_string(buf, 128, ret);
         return ret;
     }
 
@@ -483,8 +474,7 @@ int FfmpegWrapper::decode_packet(AVCodecContext *dec, const AVPacket *pkt, AVFra
             ret = output_audio_frame(frame);
 
         av_frame_unref(frame);
-        if (ret < 0)
-            return ret;
+        if (ret < 0) return ret;
     }
 
     return 0;
@@ -502,59 +492,60 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
         LOG_ERROR << "Could not find " << av_get_media_type_string(type)
                   << " stream in input " << inputUrl_;
         return ret;
-    } else {
-        stream_index = ret;
-        st = fmt_ctx->streams[stream_index];
-
-        /* find decoder for the stream */
-        dec = avcodec_find_decoder(st->codecpar->codec_id);
-        if (!dec) {
-            LOG_ERROR << "Failed to find " << av_get_media_type_string(type) << " codec";
-            return AVERROR(EINVAL);
-        }
-
-        /* Allocate a codec context for the decoder */
-        *dec_ctx = avcodec_alloc_context3(dec);
-        if (!*dec_ctx) {
-            LOG_ERROR << "Failed to allocate the " << av_get_media_type_string(type) << " codec context";
-            return AVERROR(ENOMEM);
-        }
-
-        /* Copy codec parameters from input stream to output codec context */
-        if ((ret = avcodec_parameters_to_context(*dec_ctx, st->codecpar)) < 0) {
-            LOG_ERROR << "Failed to copy " << av_get_media_type_string(type)
-                      << " codec parameters to decoder context";
-            return ret;
-        }
-
-        if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-            
-            if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 && 
-                hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
-                return -1;
-            }
-
-            (*dec_ctx)->get_format = hw_get_format;
-            if (hw_decoder_init(*dec_ctx) < 0) {
-                return -1;
-            }
-        }
-
-        /* Init the decoders */
-        if ((ret = avcodec_open2(*dec_ctx, dec, NULL)) < 0) {
-            LOG_ERROR << "Failed to open " << av_get_media_type_string(type) << " codec";
-            return ret;
-        }
-        *stream_idx = stream_index;
     }
+
+    stream_index = ret;
+    st = fmt_ctx->streams[stream_index];
+
+    /* find decoder for the stream */
+    dec = avcodec_find_decoder(st->codecpar->codec_id);
+    if (!dec) {
+        LOG_ERROR << "Failed to find " << av_get_media_type_string(type) << " codec";
+        return AVERROR(EINVAL);
+    }
+
+    /* Allocate a codec context for the decoder */
+    *dec_ctx = avcodec_alloc_context3(dec);
+    if (!*dec_ctx) {
+        LOG_ERROR << "Failed to allocate the " << av_get_media_type_string(type) << " codec context";
+        return AVERROR(ENOMEM);
+    }
+
+    /* Copy codec parameters from input stream to output codec context */
+    if ((ret = avcodec_parameters_to_context(*dec_ctx, st->codecpar)) < 0) {
+        LOG_ERROR << "Failed to copy " << av_get_media_type_string(type)
+            << " codec parameters to decoder context";
+        return ret;
+    }
+
+    if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
+
+        if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
+            hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
+            return -1;
+        }
+
+        (*dec_ctx)->get_format = hw_get_format;
+        if (hw_decoder_init(*dec_ctx) < 0) {
+            return -1;
+        }
+    }
+
+    /* Init the decoders */
+    if ((ret = avcodec_open2(*dec_ctx, dec, NULL)) < 0) {
+        LOG_ERROR << "Failed to open " << av_get_media_type_string(type) << " codec";
+        return ret;
+    }
+    *stream_idx = stream_index;
 
     return 0;
 }
 
 int FfmpegWrapper::open_input_url(const char *inputUrl, int useTCP, int retryTimes) {
     int ret = 0;
+    AVDictionary* format_options = nullptr;
     do {
-        av_dict_set(&format_options_, "rtsp_transport", useTCP ? "tcp" : "udp", 0);
+        av_dict_set(&format_options, "rtsp_transport", useTCP ? "tcp" : "udp", 0);
         if (!(fmt_ctx_ = avformat_alloc_context())) {
             LOG_ERROR << "avformat_alloc_context error";
             ret = -1;
@@ -563,21 +554,19 @@ int FfmpegWrapper::open_input_url(const char *inputUrl, int useTCP, int retryTim
         fmt_ctx_->interrupt_callback.callback = input_interrupt_cb;
         fmt_ctx_->interrupt_callback.opaque = &preTime_;
         preTime_ = time(nullptr);
-        if ((ret = avformat_open_input(&fmt_ctx_, inputUrl, NULL, &format_options_)) == 0) {
-            ret = 0;  // success
+        if ((ret = avformat_open_input(&fmt_ctx_, inputUrl, NULL, &format_options)) == 0) {
             break;
         }
         // try another mode
         useTCP = useTCP ^ 1;
         if (--retryTimes <= 0) {
-            char buf[128] = {0};
-            av_make_error_string(buf, 128, ret);
-            LOG_ERROR << "Could not open source file " << inputUrl << "(" << ret << ")" << buf;
+            LOG_ERROR << "Could not open source file " << inputUrl << "(" << ret << ")" << av_err2str(ret);
             ret = FFOpenUrlFailed;
             break;
         }
         av_usleep(10000);
     } while (!stop_request_);
+    av_dict_free(&format_options);
 
     return ret;
 }
