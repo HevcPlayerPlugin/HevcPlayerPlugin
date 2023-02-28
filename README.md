@@ -1,4 +1,5 @@
 ![GitHub](https://img.shields.io/github/license/HevcPlayerPlugin/HevcPlayerPlugin)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/HevcPlayerPlugin/HevcPlayerPlugin)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/releases/latest)
 ![GitHub all releases](https://img.shields.io/github/downloads/HevcPlayerPlugin/HevcPlayerPlugin/total)
 [![](https://img.shields.io/badge/language-c++-red.svg)](https://en.cppreference.com/)
 [![](https://img.shields.io/badge/platform-windows-blue.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
