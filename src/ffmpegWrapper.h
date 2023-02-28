@@ -1,5 +1,5 @@
-﻿#ifndef __FFMPEG_WRAPPER_H__
-#define __FFMPEG_WRAPPER_H__
+﻿#ifndef FFMPEG_WRAPPER_H
+#define FFMPEG_WRAPPER_H
 
 #include <mutex>
 #include <thread>
@@ -145,4 +145,4 @@ private:
 };
 
 
-#endif // __FFMPEG_WRAPPER_H__
+#endif // FFMPEG_WRAPPER_H
