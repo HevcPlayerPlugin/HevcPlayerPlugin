@@ -3,6 +3,7 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/HevcPlayerPlugin/HevcPlayerPlugin/total)
 [![](https://img.shields.io/badge/language-c++-red.svg)](https://en.cppreference.com/)
 [![](https://img.shields.io/badge/platform-windows-blue.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
+[![CMake](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/cmake.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/cmake.yml)
 [![](https://img.shields.io/badge/PRs-welcome-yellow.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/pulls)
 [![](https://github.com/ZLMediaKit/ZLMediaKit/actions/workflows/windows.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
 [![](https://img.shields.io/badge/chat-QQ%E7%BE%A4-brightgreen)](https://jq.qq.com/?_wv=1027&k=N2VUK58S)
