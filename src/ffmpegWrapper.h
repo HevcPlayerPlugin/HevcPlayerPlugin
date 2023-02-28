@@ -1,5 +1,5 @@
-﻿#ifndef __FFMPEG_WRAPPER_H__
-#define __FFMPEG_WRAPPER_H__
+﻿#ifndef FFMPEG_WRAPPER_H
+#define FFMPEG_WRAPPER_H
 
 #include <mutex>
 #include <thread>
@@ -24,11 +24,18 @@ extern "C" {
 }
 
 #undef av_err2str
+#undef av_ts2timestr
+#ifdef WIN32
 #define av_err2str(errnum) \
 av_make_error_string((char*)_malloca(AV_ERROR_MAX_STRING_SIZE), AV_ERROR_MAX_STRING_SIZE, errnum)
-#undef av_ts2timestr
 #define av_ts2timestr(ts, tb) \
 av_ts_make_time_string((char*)_malloca(AV_TS_MAX_STRING_SIZE), ts, tb)
+#else
+#define av_err2str(errnum) \
+av_make_error_string((char*)__builtin_alloca(AV_ERROR_MAX_STRING_SIZE), AV_ERROR_MAX_STRING_SIZE, errnum)
+#define av_ts2timestr(ts, tb) \
+av_ts_make_time_string((char*)__builtin_alloca(AV_TS_MAX_STRING_SIZE), ts, tb)
+#endif
 
 typedef std::function<int(void *user, uintptr_t handle, uint8_t *data, size_t length)> FF_RAW_DATA_CALLBACK;
 typedef std::function<int(void *user, uintptr_t handle, int err_code, const uint8_t *err_desc)> FF_EXCEPTION_CALLBACK;
@@ -139,4 +146,4 @@ private:
 };
 
 
-#endif // __FFMPEG_WRAPPER_H__
+#endif // FFMPEG_WRAPPER_H
