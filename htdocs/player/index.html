@@ -103,7 +103,9 @@ function discardFrames(numScreen) {
 }
 function changeResolution(numScreen) {
     for (var i = 0; i < numScreen; i++) {
-        if (numScreen > 1 && numScreen <= 4) {
+        if (numScreen == 1) {
+            ws[i].doChangeResolution(4);
+        } else if (numScreen > 1 && numScreen <= 4) {
             ws[i].doChangeResolution(3);
         } else if (numScreen > 4 && numScreen <= 9) {
             ws[i].doChangeResolution(2);
