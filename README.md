@@ -33,7 +33,7 @@ Web Audio兼容性不好，某些PCMA音频会出现噪音，修改为SDL2播放
 
 **前端示例**
 
-见htdocs/player，代码来自于[YUV-Webgl-Video-Player](https://github.com/p4prasoon/YUV-Webgl-Video-Player)，分屏代码来自于[JavaScript之类操作：HTML5 canvas多分屏示例](https://blog.csdn.net/boonya/article/details/82784952)
+见htdocs/player，分屏代码来自于[JavaScript之类操作：HTML5 canvas多分屏示例](https://blog.csdn.net/boonya/article/details/82784952)
 
 开源社区的发展离不开大家的无私奉献，再次感谢上面的作者以及其他不知名的各位。
 
