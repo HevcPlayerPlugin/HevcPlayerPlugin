@@ -111,7 +111,7 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
                 audio_stream_ = fmt_ctx_->streams[audio_stream_index];
             }
 
-            if (audio_open() < 0) {
+            if (audio_dec_ctx_ && audio_open() < 0) {
                 LOG_WARN << "audio open failed. Maybe too many request.";
             }
 
