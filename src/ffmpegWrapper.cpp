@@ -366,7 +366,7 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     /* write to rawvideo file */
     if (0) {
         FILE *fp = nullptr;
-        fopen_s(&fp, "420P.yuv", "ab");
+	    fp = fopen("420P.yuv", "ab");
         fwrite(video_dst_data_ + HPP_HEADER_SIZE, HPP_HEADER_SIZE, size, fp);
         fclose(fp);
     }
@@ -421,12 +421,12 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
         }
     }
     else {
-        memcpy_s(audio_dst_data_, audio_data_size, frame->extended_data[0], audio_data_size);
+        memcpy(audio_dst_data_, frame->extended_data[0], audio_data_size);
     }
 
     if (0) {
         FILE* fp = nullptr;
-        fopen_s(&fp, "audio.pcm", "ab");
+	    fp = fopen("audio.pcm", "ab");
         if (fp) {
             fwrite(audio_dst_data_ + HPP_HEADER_SIZE, 1, audio_data_size, fp);
             fclose(fp);
@@ -519,9 +519,7 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
     }
 
     if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-
-        if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
-            hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
+        if (hw_get_config(dec, AV_HWDEVICE_TYPE_VIDEOTOOLBOX) < 0) {
             return -1;
         }
 

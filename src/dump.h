@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#ifdef _WIN32
 // 下面这俩货顺序不能变
 #include <Windows.h>
 #include <DbgHelp.h>
@@ -45,3 +46,4 @@ static LONG WINAPI CreateDmpFile(struct _EXCEPTION_POINTERS *pExPointInfo) {
 void DeclareDumpFile() {
     SetUnhandledExceptionFilter(CreateDmpFile);
 }
+#endif
