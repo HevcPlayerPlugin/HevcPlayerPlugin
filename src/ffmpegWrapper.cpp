@@ -52,6 +52,11 @@ FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(n
 #ifdef _DEBUG
     showBanner();
     av_log_set_level(AV_LOG_INFO);
+    av_log_set_callback([](void* avcl, int level, const char* fmt, va_list vl) {
+        char buf[1024] = { 0 };
+        vsnprintf(buf, 1024, fmt, vl);
+        LOG_DEBUG << buf;
+    });
 #else
     av_log_set_level(AV_LOG_FATAL);
 #endif
