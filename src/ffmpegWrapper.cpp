@@ -366,9 +366,13 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     /* write to rawvideo file */
     if (0) {
         FILE *fp = nullptr;
-        fopen_s(&fp, "420P.yuv", "ab");
-        fwrite(video_dst_data_ + HPP_HEADER_SIZE, HPP_HEADER_SIZE, size, fp);
-        fclose(fp);
+        char file[128] = { 0 };
+        sprintf(file, "%s_%d_%d.yuv", av_get_pix_fmt_name(TARGET_PIX_FMT), output_width_, output_height_);
+        fopen_s(&fp, file, "ab");
+        if (fp) {
+            fwrite(video_dst_data_ + HPP_HEADER_SIZE, size, 1, fp);
+            fclose(fp);
+        }
     }
 
     if (ff_send_data_callback_ && user_data_) {
@@ -467,11 +471,9 @@ int FfmpegWrapper::decode_packet(AVCodecContext *dec, const AVPacket *pkt, AVFra
             return ret;
         }
 
-        // write the frame data to output file
-        if (dec->codec->type == AVMEDIA_TYPE_VIDEO)
-            ret = output_video_frame(frame);
-        else
-            ret = output_audio_frame(frame);
+        ret = (dec->codec->type == AVMEDIA_TYPE_VIDEO) 
+            ? output_video_frame(frame) 
+            : output_audio_frame(frame);
 
         av_frame_unref(frame);
         if (ret < 0) return ret;
@@ -519,7 +521,6 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
     }
 
     if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-
         if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
             hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
             return -1;
@@ -673,7 +674,7 @@ void FfmpegWrapper::video_decode_thread() {
             ret = decode_packet(video_dec_ctx_, pkt.get(), frame.get());
             av_packet_unref(pkt.get());
             int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
-            tp += std::chrono::microseconds(duration);
+           tp += std::chrono::microseconds(duration);
             std::this_thread::sleep_until(tp);
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 
