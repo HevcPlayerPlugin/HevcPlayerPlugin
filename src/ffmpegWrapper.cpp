@@ -40,7 +40,7 @@ static int showBanner() {
     return 0;
 }
 
-AVPixelFormat FfmpegWrapper::hw_pix_fmt_ = AV_PIX_FMT_DXVA2_VLD;
+AVPixelFormat FfmpegWrapper::hw_pix_fmt_ = AV_PIX_FMT_NONE;
 FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(nullptr),
                                  video_dec_ctx_(nullptr), audio_dec_ctx_(nullptr), hw_device_ctx_(nullptr),
                                  sw_frame_(nullptr), frameYUV_(nullptr), stop_request_(0), video_dst_data_(nullptr),
@@ -109,10 +109,9 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
 
             if (open_codec_context(&audio_stream_index, &audio_dec_ctx_, fmt_ctx_, AVMEDIA_TYPE_AUDIO) >= 0) {
                 audio_stream_ = fmt_ctx_->streams[audio_stream_index];
-            }
-
-            if (audio_dec_ctx_ && audio_open() < 0) {
-                LOG_WARN << "audio open failed. Maybe too many request.";
+                if (audio_dec_ctx_ && audio_open() < 0) {
+                    LOG_WARN << "audio open failed. Maybe too many request.";
+                }
             }
 
             /* dump input information to stderr */
@@ -520,16 +519,8 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
         return ret;
     }
 
-    if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-        if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
-            hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2)) {
-            return -1;
-        }
-
-        (*dec_ctx)->get_format = hw_get_format;
-        if (hw_decoder_init(*dec_ctx) < 0) {
-            return -1;
-        }
+    if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (ret = hw_decoder_open(dec, *dec_ctx)) < 0) {
+        LOG_WARN << "Failed to open hw decoder.";
     }
 
     /* Init the decoders */
@@ -584,6 +575,21 @@ int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx) {
     return ret;
 }
 
+int FfmpegWrapper::hw_decoder_open(const AVCodec* dec, AVCodecContext* ctx)
+{
+    if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
+        hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2) < 0) {
+        return -1;
+    }
+
+    ctx->get_format = hw_get_format;
+    if (hw_decoder_init(ctx) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int FfmpegWrapper::audio_open()
 {
     SDL_AudioSpec wantSpec, spec;
@@ -622,14 +628,15 @@ int FfmpegWrapper::hw_get_config(const AVCodec *decoder, AVHWDeviceType type) {
 }
 
 enum AVPixelFormat FfmpegWrapper::hw_get_format(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
-    const enum AVPixelFormat *p;
-
+    LOG_INFO << "trying format: " << av_get_pix_fmt_name(hw_pix_fmt_);
+    const enum AVPixelFormat* p;
     for (p = pix_fmts; *p != -1; p++) {
+        LOG_INFO << "available hardware decoder output format: " << av_get_pix_fmt_name(*p);
         if (*p == hw_pix_fmt_)
             return *p;
     }
 
-    LOG_ERROR << "Failed to get HW surface format.";
+    LOG_ERROR << "Failed to get " << av_get_pix_fmt_name(hw_pix_fmt_) << " format.";
     return AV_PIX_FMT_NONE;
 }
 
@@ -649,9 +656,10 @@ void FfmpegWrapper::audio_decode_thread() {
             this_thread::sleep_for(chrono::milliseconds(1));
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 
+        LOG_INFO << "audio_decode_thread exit with " << av_err2str(ret);
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
-            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *) "audio_decode_thread exited.");
+            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *)av_err2str(ret));
         }
     }
     catch (const std::exception &e) {
@@ -673,14 +681,18 @@ void FfmpegWrapper::video_decode_thread() {
 
             ret = decode_packet(video_dec_ctx_, pkt.get(), frame.get());
             av_packet_unref(pkt.get());
-            int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
-           tp += std::chrono::microseconds(duration);
-            std::this_thread::sleep_until(tp);
+
+            if (true) {
+                int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
+                tp += std::chrono::microseconds(duration);
+                std::this_thread::sleep_until(tp);
+            }
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 
+        LOG_INFO << "video_decode_thread exit with " << av_err2str(ret);
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
-            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *) "video_decode_thread exited.");
+            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *)av_err2str(ret));
         }
     }
     catch (const std::exception &e) {

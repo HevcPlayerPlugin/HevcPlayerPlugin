@@ -68,6 +68,8 @@ private:
 
     int hw_decoder_init(AVCodecContext *ctx);
 
+    int hw_decoder_open(const AVCodec* dec, AVCodecContext* ctx);
+
     int audio_open();
 
     int hw_get_config(const AVCodec *decoder, AVHWDeviceType type);
