@@ -49,16 +49,41 @@ FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(n
                                  useGPU_(0), user_data_(nullptr), user_handle_(0), discard_frame_index_(0),
                                  discard_frame_enabled_(1), swr_init_(false), swr_ctx_(nullptr), audio_dev_(0),
                                  device_type_(AV_HWDEVICE_TYPE_NONE){
+    av_log_set_callback([](void* avcl, int level, const char* fmt, va_list vl) {
+        static char buf[4096] = { 0 };
+        int nbytes = vsnprintf(buf, sizeof(buf), fmt, vl);
+        if (nbytes > 0 && nbytes < (int)sizeof(buf)) {
+            // LOG_DEBUG is always start with new line, replcae '\n' to '\0', make log easy to read.
+            if (buf[nbytes - 1] == '\n') {
+                buf[nbytes - 1] = '\0';
+        }
+            switch (level) {
+            case AV_LOG_PANIC:
+            case AV_LOG_FATAL:
+            case AV_LOG_ERROR:
+                LOG_ERROR << buf;
+                break;
+            case AV_LOG_WARNING:
+                LOG_WARN << buf;
+                break;
+            case AV_LOG_INFO:
+                LOG_INFO << buf;
+                break;
+            case AV_LOG_VERBOSE:
+            case AV_LOG_DEBUG:
+                LOG_DEBUG << buf;
+                break;
+            case AV_LOG_TRACE:
+            default:
+                break;
+            }
+        }
+});
 #ifdef _DEBUG
     showBanner();
-    av_log_set_level(AV_LOG_INFO);
-    av_log_set_callback([](void* avcl, int level, const char* fmt, va_list vl) {
-        char buf[1024] = { 0 };
-        vsnprintf(buf, 1024, fmt, vl);
-        LOG_DEBUG << buf;
-    });
+    av_log_set_level(AV_LOG_DEBUG);
 #else
-    av_log_set_level(AV_LOG_FATAL);
+    av_log_set_level(AV_LOG_ERROR);
 #endif
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
         LOG_ERROR << "Could not initialize SDL -" << SDL_GetError();
