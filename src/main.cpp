@@ -15,7 +15,7 @@ SysConfig *gConfig = nullptr;
 int main(int argc, char **argv) {
     gConfig = new SysConfig();
 
-    DeclareDumpFile();
+//    DeclareDumpFile();
 
     WebsocketServer s(SignalSession::GetInstance());
     s.Run(gConfig->servicePort);
