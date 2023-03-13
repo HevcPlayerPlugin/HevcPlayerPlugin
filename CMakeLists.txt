@@ -40,8 +40,8 @@ if(MSVC)
             COMMAND cd ${CMAKE_CURRENT_LIST_DIR}
             COMMAND xcopy .\\htdocs\\player .\\BuildOut\\$<CONFIGURATION>\\player\\ /s /e /y
             COMMAND xcopy .\\conf\\config.json .\\BuildOut\\$<CONFIGURATION>\\conf\\ /s /e /y
-            COMMAND xcopy .\\3rdparty\\ffmpeg-5.0.1\\lib\\*.dll .\\BuildOut\\$<CONFIGURATION>\\ /y
-            COMMAND xcopy .\\3rdparty\\SDL2-2.26.3\\lib\\*.dll .\\BuildOut\\$<CONFIGURATION>\\ /y
+            COMMAND xcopy .\\3rdparty\\ffmpeg-5.0.1\\win32\\lib\\*.dll .\\BuildOut\\$<CONFIGURATION>\\ /y
+            COMMAND xcopy .\\3rdparty\\SDL2-2.26.3\\win32\\lib\\*.dll .\\BuildOut\\$<CONFIGURATION>\\ /y
             COMMAND xcopy .\\3rdparty\\*.dll .\\BuildOut\\$<CONFIGURATION>\\ /y
             )
 else(MSVC)
