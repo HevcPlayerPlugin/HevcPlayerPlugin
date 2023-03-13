@@ -454,12 +454,12 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
         }
     }
     else {
-        memcpy_s(audio_dst_data_, audio_data_size, frame->extended_data[0], audio_data_size);
+        memcpy(audio_dst_data_, frame->extended_data[0], audio_data_size);
     }
 
     if (0) {
         FILE* fp = nullptr;
-        fopen_s(&fp, "audio.pcm", "ab");
+	    fp = fopen("audio.pcm", "ab");
         if (fp) {
             fwrite(audio_dst_data_ + HPP_HEADER_SIZE, 1, audio_data_size, fp);
             fclose(fp);
