@@ -14,11 +14,15 @@ Logger::Logger(int level, const char *tag, const std::string &filename /*= ""*/)
 
         if (fp) {
             struct tm t;
-            time_t now = time(0);
-            localtime_s(&t, &now);
+            time_t now = time(nullptr);
+#ifdef WIN32
+	        localtime_s(&t, &now);
+#else
+	        localtime_r(&now, &t);
+#endif
 
             char header[256] = {0};
-            snprintf(header, sizeof(header), "%04d-%02d-%02d %02d:%02d:%02d.%09d.[%s][%d]:",
+            snprintf(header, sizeof(header), "%04d-%02d-%02d %02d:%02d:%02d.%09lu.[%s][%zu]:",
                      t.tm_year + 1900,
                      t.tm_mon + 1,
                      t.tm_mday,
@@ -52,7 +56,11 @@ Logger::~Logger() {
 void Logger::openLogFile() {
     struct tm t;
     time_t now = time(0);
-    localtime_s(&t, &now);
+#ifdef WIN32
+	localtime_s(&t, &now);
+#else
+	localtime_r(&now, &t);
+#endif
 
     char filename[256] = {0};
     snprintf(filename, sizeof(filename), "%04d-%02d.log",

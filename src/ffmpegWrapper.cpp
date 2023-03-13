@@ -396,8 +396,12 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     if (0) {
         FILE *fp = nullptr;
         char file[128] = { 0 };
-        sprintf(file, "%s_%d_%d.yuv", av_get_pix_fmt_name(TARGET_PIX_FMT), output_width_, output_height_);
+        snprintf(file, sizeof(file), "%s_%d_%d.yuv", av_get_pix_fmt_name(TARGET_PIX_FMT), output_width_, output_height_);
+#ifdef WIN32
         fopen_s(&fp, file, "ab");
+#else
+	    fp = fopen("420P.yuv", "ab");
+#endif
         if (fp) {
             fwrite(video_dst_data_ + HPP_HEADER_SIZE, size, 1, fp);
             fclose(fp);
@@ -454,12 +458,20 @@ int FfmpegWrapper::output_audio_frame(AVFrame *frame) {
         }
     }
     else {
+#ifdef WIN32
         memcpy_s(audio_dst_data_, audio_data_size, frame->extended_data[0], audio_data_size);
+#else
+	    memcpy(audio_dst_data_, frame->extended_data[0], audio_data_size);
+#endif
     }
 
     if (0) {
         FILE* fp = nullptr;
+#ifdef WIN32
         fopen_s(&fp, "audio.pcm", "ab");
+#else
+	    fp = fopen("420P.yuv", "ab");
+#endif
         if (fp) {
             fwrite(audio_dst_data_ + HPP_HEADER_SIZE, 1, audio_data_size, fp);
             fclose(fp);
@@ -607,10 +619,16 @@ int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx) {
 
 int FfmpegWrapper::hw_decoder_open(const AVCodec* dec, AVCodecContext* ctx)
 {
+#ifdef WIN32
     if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
         hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2) < 0) {
         return -1;
     }
+#else
+	if (hw_get_config(dec, AV_HWDEVICE_TYPE_VIDEOTOOLBOX) < 0) {
+		return -1;
+	}
+#endif
 
     ctx->get_format = hw_get_format;
     if (hw_decoder_init(ctx) < 0) {
