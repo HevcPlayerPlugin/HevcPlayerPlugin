@@ -1,10 +1,11 @@
+[![CodeQL](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/codeql.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/codeql.yml)
+[![CMake](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/cmake.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/actions/workflows/cmake.yml)
 ![GitHub](https://img.shields.io/github/license/HevcPlayerPlugin/HevcPlayerPlugin)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/HevcPlayerPlugin/HevcPlayerPlugin)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/releases/latest)
 ![GitHub all releases](https://img.shields.io/github/downloads/HevcPlayerPlugin/HevcPlayerPlugin/total)
 [![](https://img.shields.io/badge/language-c++-red.svg)](https://en.cppreference.com/)
 [![](https://img.shields.io/badge/platform-windows-blue.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
 [![](https://img.shields.io/badge/PRs-welcome-yellow.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin/pulls)
-[![](https://github.com/ZLMediaKit/ZLMediaKit/actions/workflows/windows.yml/badge.svg)](https://github.com/HevcPlayerPlugin/HevcPlayerPlugin)
 [![](https://img.shields.io/badge/chat-QQ%E7%BE%A4-brightgreen)](https://jq.qq.com/?_wv=1027&k=N2VUK58S)
 ## 声明
 本项目采用宽松的MIT软件许可协议。
@@ -32,7 +33,7 @@ Web Audio兼容性不好，某些PCMA音频会出现噪音，修改为SDL2播放
 
 **前端示例**
 
-见htdocs/player，代码来自于[YUV-Webgl-Video-Player](https://github.com/p4prasoon/YUV-Webgl-Video-Player)，分屏代码来自于[JavaScript之类操作：HTML5 canvas多分屏示例](https://blog.csdn.net/boonya/article/details/82784952)
+见htdocs/player，分屏代码来自于[JavaScript之类操作：HTML5 canvas多分屏示例](https://blog.csdn.net/boonya/article/details/82784952)
 
 开源社区的发展离不开大家的无私奉献，再次感谢上面的作者以及其他不知名的各位。
 

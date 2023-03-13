@@ -40,7 +40,7 @@ static int showBanner() {
     return 0;
 }
 
-AVPixelFormat FfmpegWrapper::hw_pix_fmt_ = AV_PIX_FMT_DXVA2_VLD;
+AVPixelFormat FfmpegWrapper::hw_pix_fmt_ = AV_PIX_FMT_NONE;
 FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(nullptr),
                                  video_dec_ctx_(nullptr), audio_dec_ctx_(nullptr), hw_device_ctx_(nullptr),
                                  sw_frame_(nullptr), frameYUV_(nullptr), stop_request_(0), video_dst_data_(nullptr),
@@ -49,11 +49,41 @@ FfmpegWrapper::FfmpegWrapper() : fmt_ctx_(nullptr), sws_init_(false), sws_ctx_(n
                                  useGPU_(0), user_data_(nullptr), user_handle_(0), discard_frame_index_(0),
                                  discard_frame_enabled_(1), swr_init_(false), swr_ctx_(nullptr), audio_dev_(0),
                                  device_type_(AV_HWDEVICE_TYPE_NONE){
+    av_log_set_callback([](void* avcl, int level, const char* fmt, va_list vl) {
+        static char buf[4096] = { 0 };
+        int nbytes = vsnprintf(buf, sizeof(buf), fmt, vl);
+        if (nbytes > 0 && nbytes < (int)sizeof(buf)) {
+            // LOG_DEBUG is always start with new line, replcae '\n' to '\0', make log easy to read.
+            if (buf[nbytes - 1] == '\n') {
+                buf[nbytes - 1] = '\0';
+        }
+            switch (level) {
+            case AV_LOG_PANIC:
+            case AV_LOG_FATAL:
+            case AV_LOG_ERROR:
+                LOG_ERROR << buf;
+                break;
+            case AV_LOG_WARNING:
+                LOG_WARN << buf;
+                break;
+            case AV_LOG_INFO:
+                LOG_INFO << buf;
+                break;
+            case AV_LOG_VERBOSE:
+            case AV_LOG_DEBUG:
+                LOG_DEBUG << buf;
+                break;
+            case AV_LOG_TRACE:
+            default:
+                break;
+            }
+        }
+});
 #ifdef _DEBUG
     showBanner();
-    av_log_set_level(AV_LOG_INFO);
+    av_log_set_level(AV_LOG_DEBUG);
 #else
-    av_log_set_level(AV_LOG_FATAL);
+    av_log_set_level(AV_LOG_ERROR);
 #endif
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
         LOG_ERROR << "Could not initialize SDL -" << SDL_GetError();
@@ -109,10 +139,9 @@ int FfmpegWrapper::startPlay(const char *inputUrl, int width, int height,
 
             if (open_codec_context(&audio_stream_index, &audio_dec_ctx_, fmt_ctx_, AVMEDIA_TYPE_AUDIO) >= 0) {
                 audio_stream_ = fmt_ctx_->streams[audio_stream_index];
-            }
-
-            if (audio_open() < 0) {
-                LOG_WARN << "audio open failed. Maybe too many request.";
+                if (audio_dec_ctx_ && audio_open() < 0) {
+                    LOG_WARN << "audio open failed. Maybe too many request.";
+                }
             }
 
             /* dump input information to stderr */
@@ -366,9 +395,13 @@ int FfmpegWrapper::output_video_frame(AVFrame *frame) {
     /* write to rawvideo file */
     if (0) {
         FILE *fp = nullptr;
-	    fp = fopen("420P.yuv", "ab");
-        fwrite(video_dst_data_ + HPP_HEADER_SIZE, HPP_HEADER_SIZE, size, fp);
-        fclose(fp);
+        char file[128] = { 0 };
+        sprintf(file, "%s_%d_%d.yuv", av_get_pix_fmt_name(TARGET_PIX_FMT), output_width_, output_height_);
+        fopen_s(&fp, file, "ab");
+        if (fp) {
+            fwrite(video_dst_data_ + HPP_HEADER_SIZE, size, 1, fp);
+            fclose(fp);
+        }
     }
 
     if (ff_send_data_callback_ && user_data_) {
@@ -467,11 +500,9 @@ int FfmpegWrapper::decode_packet(AVCodecContext *dec, const AVPacket *pkt, AVFra
             return ret;
         }
 
-        // write the frame data to output file
-        if (dec->codec->type == AVMEDIA_TYPE_VIDEO)
-            ret = output_video_frame(frame);
-        else
-            ret = output_audio_frame(frame);
+        ret = (dec->codec->type == AVMEDIA_TYPE_VIDEO) 
+            ? output_video_frame(frame) 
+            : output_audio_frame(frame);
 
         av_frame_unref(frame);
         if (ret < 0) return ret;
@@ -518,15 +549,8 @@ int FfmpegWrapper::open_codec_context(int *stream_idx,
         return ret;
     }
 
-    if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (*dec_ctx)->codec_id == AV_CODEC_ID_HEVC) {
-        if (hw_get_config(dec, AV_HWDEVICE_TYPE_VIDEOTOOLBOX) < 0) {
-            return -1;
-        }
-
-        (*dec_ctx)->get_format = hw_get_format;
-        if (hw_decoder_init(*dec_ctx) < 0) {
-            return -1;
-        }
+    if (useGPU_ && type == AVMEDIA_TYPE_VIDEO && (ret = hw_decoder_open(dec, *dec_ctx)) < 0) {
+        LOG_WARN << "Failed to open hw decoder.";
     }
 
     /* Init the decoders */
@@ -581,6 +605,21 @@ int FfmpegWrapper::hw_decoder_init(AVCodecContext *ctx) {
     return ret;
 }
 
+int FfmpegWrapper::hw_decoder_open(const AVCodec* dec, AVCodecContext* ctx)
+{
+    if (hw_get_config(dec, AV_HWDEVICE_TYPE_D3D11VA) < 0 &&
+        hw_get_config(dec, AV_HWDEVICE_TYPE_DXVA2) < 0) {
+        return -1;
+    }
+
+    ctx->get_format = hw_get_format;
+    if (hw_decoder_init(ctx) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int FfmpegWrapper::audio_open()
 {
     SDL_AudioSpec wantSpec, spec;
@@ -619,14 +658,15 @@ int FfmpegWrapper::hw_get_config(const AVCodec *decoder, AVHWDeviceType type) {
 }
 
 enum AVPixelFormat FfmpegWrapper::hw_get_format(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
-    const enum AVPixelFormat *p;
-
+    LOG_INFO << "trying format: " << av_get_pix_fmt_name(hw_pix_fmt_);
+    const enum AVPixelFormat* p;
     for (p = pix_fmts; *p != -1; p++) {
+        LOG_INFO << "available hardware decoder output format: " << av_get_pix_fmt_name(*p);
         if (*p == hw_pix_fmt_)
             return *p;
     }
 
-    LOG_ERROR << "Failed to get HW surface format.";
+    LOG_ERROR << "Failed to get " << av_get_pix_fmt_name(hw_pix_fmt_) << " format.";
     return AV_PIX_FMT_NONE;
 }
 
@@ -646,9 +686,10 @@ void FfmpegWrapper::audio_decode_thread() {
             this_thread::sleep_for(chrono::milliseconds(1));
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 
+        LOG_INFO << "audio_decode_thread exit with " << av_err2str(ret);
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
-            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *) "audio_decode_thread exited.");
+            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *)av_err2str(ret));
         }
     }
     catch (const std::exception &e) {
@@ -670,14 +711,18 @@ void FfmpegWrapper::video_decode_thread() {
 
             ret = decode_packet(video_dec_ctx_, pkt.get(), frame.get());
             av_packet_unref(pkt.get());
-            int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
-            tp += std::chrono::microseconds(duration);
-            std::this_thread::sleep_until(tp);
+
+            if (true) {
+                int duration = 1000000 / av_q2d(video_stream_->avg_frame_rate);
+                tp += std::chrono::microseconds(duration);
+                std::this_thread::sleep_until(tp);
+            }
         } while (ret >= 0 || ret == AVERROR(EAGAIN) || ret == AVERROR_EOF);
 
+        LOG_INFO << "video_decode_thread exit with " << av_err2str(ret);
         // stop_request_ 为1时不需要回调
         if (!stop_request_ && ff_exception_callback_ && user_data_) {
-            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *) "video_decode_thread exited.");
+            ff_exception_callback_(user_data_, user_handle_, ret, (uint8_t *)av_err2str(ret));
         }
     }
     catch (const std::exception &e) {
